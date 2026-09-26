@@ -1,0 +1,253 @@
+{
+  "description": "Authorization matrix. `expect` is ALLOW or an error code; `chain` lists grant digests leaf first.",
+  "now": "2025-01-01T00:00:00.000000000Z",
+  "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+  "roots": [
+    "pri_agf47zliczyapaaaaaaaaaaacy"
+  ],
+  "principals": [
+    {
+      "id": "pri_agf47zliczyapaaaaaaaaaaacy",
+      "kind": "KEY",
+      "public_key": "ed25519:Q6cucUQBdi32a2jCbfvfJoKq7J8kdOykYT5CSg-6_Tw"
+    },
+    {
+      "id": "pri_agf47zlic5yapaaaaaaaaaaac4",
+      "kind": "KEY",
+      "public_key": "ed25519:Zr5-Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo"
+    },
+    {
+      "id": "pri_agf47zlidbyapaaaaaaaaaaada",
+      "kind": "KEY",
+      "public_key": "ed25519:C1E62bSSQBXKCQLtB5BE06xdvsIwbwaUjBDajrbjny0"
+    },
+    {
+      "id": "pri_agf47zlidfyapaaaaaaaaaaade",
+      "kind": "KEY",
+      "public_key": "ed25519:kaKKC3Q4FZOk2UaVeSCJJq_IrYLIg5t2RDWbnrqaSzo"
+    }
+  ],
+  "grants": [
+    {
+      "digest": "sha256:0d65c140310203d9dd557dc60b698910be9d878d05a6aad3ff10e1d173d62a54",
+      "grant": {
+        "body": {
+          "id": "grt_agf47zlidjyapaaaaaaaaaaadi",
+          "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+          "issuer": "pri_agf47zliczyapaaaaaaaaaaacy",
+          "subject": "pri_agf47zlic5yapaaaaaaaaaaac4",
+          "actions": [
+            "changepack.*",
+            "kv.write"
+          ],
+          "resources": [
+            {
+              "kind": "kv.*",
+              "locator_prefix": "app/"
+            }
+          ],
+          "not_before": "2024-01-01T00:00:00.000000000Z",
+          "expires_at": "2030-01-01T00:00:00.000000000Z",
+          "delegation_depth": 1,
+          "nonce": "Zml4dHVyZQ"
+        },
+        "signature": "J0XE8fkJi68nzXUH8PyVAnLa1657BOBBvLDp5iQmVW6vgeNZJxYxma55xEXDlysFhNyWbtKBtxx8AlzYQfS7Ag"
+      }
+    },
+    {
+      "digest": "sha256:0437a34564a0780b10789812a0e0790cd540000deae5bc7406e745223f77a91f",
+      "grant": {
+        "body": {
+          "id": "grt_agf47zlidnyapaaaaaaaaaaadm",
+          "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+          "issuer": "pri_agf47zlic5yapaaaaaaaaaaac4",
+          "subject": "pri_agf47zlidbyapaaaaaaaaaaada",
+          "actions": [
+            "changepack.create"
+          ],
+          "resources": [
+            {
+              "kind": "kv.*",
+              "locator_prefix": "app/"
+            }
+          ],
+          "not_before": "2024-01-01T00:00:00.000000000Z",
+          "expires_at": "2029-01-01T00:00:00.000000000Z",
+          "delegation_depth": 0,
+          "parent": "sha256:0d65c140310203d9dd557dc60b698910be9d878d05a6aad3ff10e1d173d62a54",
+          "nonce": "Zml4dHVyZQ"
+        },
+        "signature": "ZzBPgn5v_EBDnMNCHCyfgYJw90uIcptYIBZys-2tUrCKRal4k5WwG03COs083wYz2GvBjwRvXvcwC-zTQ1KDCA"
+      }
+    },
+    {
+      "digest": "sha256:b488df1d1a049e9d6fbb3e790758e7c691dfcc8b2f81af0690ae6b7ad271561a",
+      "grant": {
+        "body": {
+          "id": "grt_agf47zlidryapaaaaaaaaaaadq",
+          "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+          "issuer": "pri_agf47zlic5yapaaaaaaaaaaac4",
+          "subject": "pri_agf47zlidbyapaaaaaaaaaaada",
+          "actions": [
+            "baseline.create"
+          ],
+          "resources": [
+            {
+              "kind": "kv.*",
+              "locator_prefix": "app/"
+            }
+          ],
+          "not_before": "2024-01-01T00:00:00.000000000Z",
+          "expires_at": "2029-01-01T00:00:00.000000000Z",
+          "delegation_depth": 0,
+          "parent": "sha256:0d65c140310203d9dd557dc60b698910be9d878d05a6aad3ff10e1d173d62a54",
+          "nonce": "Zml4dHVyZQ"
+        },
+        "signature": "gpke3E4L4BCREnudck_WJYgphjKJ11FBkUgT6iNl0Pd6BKn_K0O44VAkKN1URmLn6TzIL3D3S246C4qop6ZsBQ"
+      }
+    },
+    {
+      "digest": "sha256:d1eee0f12b2c857d2906410ae5f2773a254ed6b1318b97c4bd0554f84e12dcc2",
+      "grant": {
+        "body": {
+          "id": "grt_agf47zlidvyapaaaaaaaaaaadu",
+          "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+          "issuer": "pri_agf47zliczyapaaaaaaaaaaacy",
+          "subject": "pri_agf47zlidfyapaaaaaaaaaaade",
+          "actions": [
+            "changepack.seal"
+          ],
+          "resources": [
+            {
+              "kind": "kv.*",
+              "locator_prefix": "app/"
+            }
+          ],
+          "not_before": "2024-01-01T00:00:00.000000000Z",
+          "expires_at": "2024-02-01T00:00:00.000000000Z",
+          "delegation_depth": 0,
+          "nonce": "Zml4dHVyZQ"
+        },
+        "signature": "yTbCqnIh7-tw0fKMR7yYRDvp1kxGfMKmzWhwWTiCzlIEBYE6wQD7gP8utWlHFoiiK4G6ZmAXm5OUowjWUimDCQ"
+      }
+    },
+    {
+      "digest": "sha256:817638c51eea8ffc3ca17d7d004cb2e3415a2533297b439df8abff68015ab1c9",
+      "grant": {
+        "body": {
+          "id": "grt_agf47zlidzyapaaaaaaaaaaady",
+          "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+          "issuer": "pri_agf47zliczyapaaaaaaaaaaacy",
+          "subject": "pri_agf47zlidfyapaaaaaaaaaaade",
+          "actions": [
+            "changepack.create"
+          ],
+          "resources": [
+            {
+              "kind": "kv.*",
+              "locator_prefix": "app/"
+            }
+          ],
+          "not_before": "2024-01-01T00:00:00.000000000Z",
+          "expires_at": "2030-01-01T00:00:00.000000000Z",
+          "delegation_depth": 0,
+          "nonce": "Zm9yZ2Vk"
+        },
+        "signature": "8DYm767ASCmBN48q-AS_CporQBEH1GuCzRY-uSehkguKZOHIGnbN4f6F61yLTMmnILyo6ZZmClN5zQ8unC2aBw"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "name": "root_implicit",
+      "principal": "pri_agf47zliczyapaaaaaaaaaaacy",
+      "action": "baseline.create",
+      "expect": "ALLOW",
+      "chain": []
+    },
+    {
+      "name": "direct_grant",
+      "principal": "pri_agf47zlic5yapaaaaaaaaaaac4",
+      "action": "changepack.seal",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/1",
+        "extension": "org.openaevc.reference.kv"
+      },
+      "expect": "ALLOW",
+      "chain": [
+        "sha256:0d65c140310203d9dd557dc60b698910be9d878d05a6aad3ff10e1d173d62a54"
+      ]
+    },
+    {
+      "name": "resource_outside_selector",
+      "principal": "pri_agf47zlic5yapaaaaaaaaaaac4",
+      "action": "kv.write",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "other/1",
+        "extension": "org.openaevc.reference.kv"
+      },
+      "expect": "FORBIDDEN",
+      "chain": []
+    },
+    {
+      "name": "delegated",
+      "principal": "pri_agf47zlidbyapaaaaaaaaaaada",
+      "action": "changepack.create",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/2",
+        "extension": "org.openaevc.reference.kv"
+      },
+      "expect": "ALLOW",
+      "chain": [
+        "sha256:0437a34564a0780b10789812a0e0790cd540000deae5bc7406e745223f77a91f",
+        "sha256:0d65c140310203d9dd557dc60b698910be9d878d05a6aad3ff10e1d173d62a54"
+      ]
+    },
+    {
+      "name": "delegation_widening",
+      "principal": "pri_agf47zlidbyapaaaaaaaaaaada",
+      "action": "baseline.create",
+      "expect": "FORBIDDEN",
+      "chain": []
+    },
+    {
+      "name": "default_deny",
+      "principal": "pri_agf47zlidbyapaaaaaaaaaaada",
+      "action": "changepack.promote",
+      "expect": "FORBIDDEN",
+      "chain": []
+    },
+    {
+      "name": "expired",
+      "principal": "pri_agf47zlidfyapaaaaaaaaaaade",
+      "action": "changepack.seal",
+      "expect": "CAPABILITY_EXPIRED",
+      "chain": []
+    },
+    {
+      "name": "forged_signature",
+      "principal": "pri_agf47zlidfyapaaaaaaaaaaade",
+      "action": "changepack.create",
+      "expect": "FORBIDDEN",
+      "chain": []
+    },
+    {
+      "name": "revoked_parent",
+      "principal": "pri_agf47zlidbyapaaaaaaaaaaada",
+      "action": "changepack.create",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/2",
+        "extension": "org.openaevc.reference.kv"
+      },
+      "revoked": [
+        "grt_agf47zlidjyapaaaaaaaaaaadi"
+      ],
+      "expect": "CAPABILITY_REVOKED",
+      "chain": []
+    }
+  ]
+}

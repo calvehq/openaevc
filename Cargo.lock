@@ -191,6 +191,7 @@ checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 name = "fixture-builder"
 version = "0.1.0"
 dependencies = [
+ "openaevc-authority",
  "openaevc-canonical",
  "openaevc-core",
  "openaevc-crypto",
@@ -312,6 +313,18 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
+name = "openaevc-authority"
+version = "0.1.0"
+dependencies = [
+ "openaevc-canonical",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "proptest",
+ "serde_json",
+]
 
 [[package]]
 name = "openaevc-canonical"

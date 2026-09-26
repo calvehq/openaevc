@@ -405,6 +405,69 @@ fn identifiers(cx: &Ctx) -> Value {
     })
 }
 
+fn authority(cx: &Ctx) -> Value {
+    use openaevc_authority::sign_grant;
+    let t = |s: &str| ts(s);
+    let key = |n: u8| SigningKey::from_seed([n; 32]);
+    let (root_k, alice_k, bob_k, carol_k) = (key(10), key(11), key(12), key(13));
+    let root: PrincipalId = cx.ids.next();
+    let alice: PrincipalId = cx.ids.next();
+    let bob: PrincipalId = cx.ids.next();
+    let carol: PrincipalId = cx.ids.next();
+    let principal = |id: PrincipalId, k: &SigningKey| json!({"id": id, "kind": "KEY", "public_key": k.public_key()});
+    let body = |id: GrantId, issuer, subject, actions: &[&str], parent: Option<Digest>, depth: u32, exp: &str| GrantBody {
+        id,
+        namespace: cx.ns,
+        issuer,
+        subject,
+        actions: actions.iter().map(|s| s.to_string()).collect(),
+        resources: vec![ResourceSelector { kind: "kv.*".into(), locator_prefix: Some("app/".into()) }],
+        constraints: BTreeMap::new(),
+        not_before: t("2024-01-01T00:00:00Z"),
+        expires_at: t(exp),
+        delegation_depth: depth,
+        parent,
+        nonce: "Zml4dHVyZQ".into(),
+    };
+    let g_alice = sign_grant(body(cx.ids.next(), root, alice, &["changepack.*", "kv.write"], None, 1, "2030-01-01T00:00:00Z"), &root_k).unwrap();
+    let d_alice = openaevc_crypto::digest_of(&g_alice).unwrap();
+    let g_bob = sign_grant(body(cx.ids.next(), alice, bob, &["changepack.create"], Some(d_alice), 0, "2029-01-01T00:00:00Z"), &alice_k).unwrap();
+    let d_bob = openaevc_crypto::digest_of(&g_bob).unwrap();
+    let g_bob_wide = sign_grant(body(cx.ids.next(), alice, bob, &["baseline.create"], Some(d_alice), 0, "2029-01-01T00:00:00Z"), &alice_k).unwrap();
+    let d_bob_wide = openaevc_crypto::digest_of(&g_bob_wide).unwrap();
+    let g_carol_expired = sign_grant(body(cx.ids.next(), root, carol, &["changepack.seal"], None, 0, "2024-02-01T00:00:00Z"), &root_k).unwrap();
+    let d_carol = openaevc_crypto::digest_of(&g_carol_expired).unwrap();
+    let mut g_forged = sign_grant(body(cx.ids.next(), root, carol, &["changepack.create"], None, 0, "2030-01-01T00:00:00Z"), &carol_k).unwrap();
+    g_forged.body.nonce = "Zm9yZ2Vk".into();
+    let d_forged = openaevc_crypto::digest_of(&g_forged).unwrap();
+    let res = |loc: &str| json!({"kind": "kv.entry", "locator": loc, "extension": "org.openaevc.reference.kv"});
+    json!({
+        "description": "Authorization matrix. `expect` is ALLOW or an error code; `chain` lists grant digests leaf first.",
+        "now": "2025-01-01T00:00:00.000000000Z",
+        "namespace": cx.ns,
+        "roots": [root],
+        "principals": [principal(root, &root_k), principal(alice, &alice_k), principal(bob, &bob_k), principal(carol, &carol_k)],
+        "grants": [
+            {"digest": d_alice, "grant": g_alice},
+            {"digest": d_bob, "grant": g_bob},
+            {"digest": d_bob_wide, "grant": g_bob_wide},
+            {"digest": d_carol, "grant": g_carol_expired},
+            {"digest": d_forged, "grant": g_forged},
+        ],
+        "cases": [
+            {"name": "root_implicit", "principal": root, "action": "baseline.create", "expect": "ALLOW", "chain": []},
+            {"name": "direct_grant", "principal": alice, "action": "changepack.seal", "resource": res("app/1"), "expect": "ALLOW", "chain": [d_alice]},
+            {"name": "resource_outside_selector", "principal": alice, "action": "kv.write", "resource": res("other/1"), "expect": "FORBIDDEN", "chain": []},
+            {"name": "delegated", "principal": bob, "action": "changepack.create", "resource": res("app/2"), "expect": "ALLOW", "chain": [d_bob, d_alice]},
+            {"name": "delegation_widening", "principal": bob, "action": "baseline.create", "expect": "FORBIDDEN", "chain": []},
+            {"name": "default_deny", "principal": bob, "action": "changepack.promote", "expect": "FORBIDDEN", "chain": []},
+            {"name": "expired", "principal": carol, "action": "changepack.seal", "expect": "CAPABILITY_EXPIRED", "chain": []},
+            {"name": "forged_signature", "principal": carol, "action": "changepack.create", "expect": "FORBIDDEN", "chain": []},
+            {"name": "revoked_parent", "principal": bob, "action": "changepack.create", "resource": res("app/2"), "revoked": [g_alice.body.id], "expect": "CAPABILITY_REVOKED", "chain": []},
+        ],
+    })
+}
+
 fn main() {
     let check = std::env::args().any(|a| a == "--check");
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/canonical");
@@ -414,6 +477,7 @@ fn main() {
         ("objects.json", objects(&cx)),
         ("signatures.json", signatures(&cx)),
         ("identifiers.json", identifiers(&cx)),
+        ("../authority/matrix.json", authority(&cx)),
     ];
     let mut stale = false;
     for (name, v) in files {
