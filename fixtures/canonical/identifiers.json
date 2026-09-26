@@ -1,0 +1,22 @@
+{
+  "valid": [
+    "ns_agf47zliafyapaaaaaaaaaaaae",
+    "pri_agf47zliajyapaaaaaaaaaaaai",
+    "cpk_agf47zlicvyapaaaaaaaaaaacu",
+    "cpk_AGF47ZLICVYAPAAAAAAAAAAACU",
+    "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "2024-05-01T12:00:00Z",
+    "2024-05-01T12:00:00.123456789Z"
+  ],
+  "invalid": [
+    "cpk_",
+    "cpk_agjdus24nvyadaareizuivlgo",
+    "xyz_agjdus24nvyadaareizuivlgo4",
+    "cpk_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "md5:00000000000000000000000000000000",
+    "2024-05-01T12:00:00+01:00",
+    "2024-13-01T00:00:00Z",
+    ""
+  ]
+}

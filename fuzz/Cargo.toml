@@ -1,0 +1,32 @@
+# cargo-fuzz targets (nightly). Run: cargo +nightly fuzz run <target> -- -max_total_time=60
+[package]
+name = "openaevc-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+openaevc-protocol = { path = "../crates/openaevc-protocol" }
+openaevc-canonical = { path = "../crates/openaevc-canonical" }
+openaevc-core = { path = "../crates/openaevc-core" }
+serde_json = "1"
+
+[[bin]]
+name = "canonical_decode"
+path = "fuzz_targets/canonical_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "protocol_envelopes"
+path = "fuzz_targets/protocol_envelopes.rs"
+test = false
+doc = false
+bench = false

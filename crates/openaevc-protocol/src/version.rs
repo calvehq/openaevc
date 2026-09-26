@@ -3,6 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// The OpenAEVC protocol version implemented by this crate.
@@ -74,7 +75,7 @@ impl<'de> Deserialize<'de> for ProtocolVersion {
 }
 
 /// Inclusive range of protocol versions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct VersionRange {
     pub min: ProtocolVersion,
