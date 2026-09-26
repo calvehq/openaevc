@@ -5,6 +5,7 @@ members = [
     "crates/openaevc-canonical",
     "crates/openaevc-crypto",
     "crates/openaevc-core",
+    "crates/openaevc-authority",
     "tooling/generate-schemas",
     "tooling/fixture-builder",
 ]
@@ -34,6 +35,7 @@ openaevc-protocol = { path = "crates/openaevc-protocol", version = "0.1.0" }
 openaevc-canonical = { path = "crates/openaevc-canonical", version = "0.1.0" }
 openaevc-crypto = { path = "crates/openaevc-crypto", version = "0.1.0" }
 openaevc-core = { path = "crates/openaevc-core", version = "0.1.0" }
+openaevc-authority = { path = "crates/openaevc-authority", version = "0.1.0" }
 proptest = "1"
 schemars = "1"
 base64 = "0.22"

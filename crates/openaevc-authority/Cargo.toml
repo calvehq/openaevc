@@ -1,0 +1,21 @@
+[package]
+name = "openaevc-authority"
+description = "OpenAEVC capability authority: grants, delegation, revocation, default-deny authorization."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+openaevc-protocol.workspace = true
+openaevc-canonical.workspace = true
+openaevc-crypto.workspace = true
+openaevc-core.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+proptest.workspace = true
