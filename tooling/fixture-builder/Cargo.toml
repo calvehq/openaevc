@@ -1,0 +1,18 @@
+[package]
+name = "fixture-builder"
+description = "Regenerates the golden fixtures in fixtures/ (deterministic)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+openaevc-protocol.workspace = true
+openaevc-canonical.workspace = true
+openaevc-crypto.workspace = true
+openaevc-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true

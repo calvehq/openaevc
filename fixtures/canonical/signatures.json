@@ -1,0 +1,47 @@
+{
+  "description": "Ed25519 over \"OPENAEVC/1 <domain>\\n\" || canonical(unsigned value).",
+  "cases": [
+    {
+      "name": "command_envelope",
+      "domain": "request",
+      "seed_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+      "public_key": "ed25519:7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E",
+      "unsigned": {
+        "protocol_version": "0.1.0",
+        "request_id": "req_agf47zlicfyapaaaaaaaaaaace",
+        "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+        "caller": "pri_agf47zliajyapaaaaaaaaaaaai",
+        "nonce": "c2lnbmF0dXJlLWZpeHR1cmU",
+        "issued_at": "2024-05-01T12:00:00.000000000Z",
+        "body": {
+          "type": "SealChangePack",
+          "pack": "cpk_agf47zlicjyapaaaaaaaaaaaci",
+          "expected_generation": 3
+        }
+      },
+      "message_hex": "a764626f6479a3647061636b781e63706b5f61676634377a6c69636a7961706161616161616161616161636964747970656e5365616c4368616e67655061636b7365787065637465645f67656e65726174696f6e03656e6f6e63657763326c6e626d463064584a6c4c575a7065485231636d556663616c6c6572781e7072695f61676634377a6c69616a79617061616161616161616161616169696973737565645f6174781e323032342d30352d30315431323a30303a30302e3030303030303030305a696e616d657370616365781d6e735f61676634377a6c696166796170616161616161616161616161656a726571756573745f6964781e7265715f61676634377a6c696366796170616161616161616161616163657070726f746f636f6c5f76657273696f6e65302e312e30",
+      "signature": "GaVdhi68tcW4-lXZ8F1wb9kuRFJFe74wAM2NJvqHTM62UvL6tbP_QhhucS191xVl3joCtbZZVaGXqGV_QxsADg"
+    },
+    {
+      "name": "grant",
+      "domain": "grant",
+      "seed_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+      "public_key": "ed25519:7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E",
+      "unsigned": {
+        "id": "grt_agf47zlicnyapaaaaaaaaaaacm",
+        "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+        "issuer": "pri_agf47zliajyapaaaaaaaaaaaai",
+        "subject": "pri_agf47zlicryapaaaaaaaaaaacq",
+        "actions": [
+          "*"
+        ],
+        "not_before": "2024-01-01T00:00:00.000000000Z",
+        "expires_at": "2030-01-01T00:00:00.000000000Z",
+        "delegation_depth": 0,
+        "nonce": "Z3JhbnQ"
+      },
+      "message_hex": "a9626964781e6772745f61676634377a6c69636e7961706161616161616161616161636d656e6f6e6365675a334a68626e5166697373756572781e7072695f61676634377a6c69616a7961706161616161616161616161616967616374696f6e7381612a677375626a656374781e7072695f61676634377a6c69637279617061616161616161616161616371696e616d657370616365781d6e735f61676634377a6c696166796170616161616161616161616161656a657870697265735f6174781e323033302d30312d30315430303a30303a30302e3030303030303030305a6a6e6f745f6265666f7265781e323032342d30312d30315430303a30303a30302e3030303030303030305a7064656c65676174696f6e5f646570746800",
+      "signature": "P-9V98GJuzaJhm3bM6gqCX9EF1wxp1z27ElnBA5s3N66ZMKaCvpLnErjT-XLjS1T3QhAiUPN8nv0moodV5ThAA"
+    }
+  ]
+}

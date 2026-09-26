@@ -1,0 +1,15 @@
+[package]
+name = "generate-schemas"
+description = "Regenerates schemas/json and schemas/cddl from the protocol types."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+openaevc-protocol.workspace = true
+schemars.workspace = true
+serde_json.workspace = true
