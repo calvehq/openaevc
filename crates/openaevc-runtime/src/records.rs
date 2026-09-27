@@ -20,6 +20,8 @@ pub(crate) const EXECUTION: &str = "execution";
 /// Non-terminal executions of a Namespace (lease sweep index).
 pub(crate) const ACTIVE_EXECUTIONS: &str = "active_exe";
 pub(crate) const EXECUTION_IDEMPOTENCY: &str = "exe_idem";
+/// Evidence / verification / evaluation / decision index per pack.
+pub(crate) const PACK_RESULTS: &str = "pack_results";
 
 pub(crate) fn generation_key(
     ns: &NamespaceId,

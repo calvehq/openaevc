@@ -3,7 +3,7 @@
 Informative definitions of protocol terms. Normative behavior is defined in the referenced files.
 
 | Term | Meaning |
-|------|---------|
+| --- | --- |
 | **Namespace** | Top-level isolation scope for identifiers, authority roots, packs, Baselines, execution state, events, policies and extensions (namespace.md). Not a product "project". |
 | **Principal** | An authenticated identity: `KEY`, `RUNTIME`, `SERVICE` (with an Ed25519 key) or `ACTOR` (linked to a key principal). |
 | **Capability grant** | Signed statement allowing a subject principal to perform actions on resources within a Namespace (capabilities.md). |

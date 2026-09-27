@@ -1,6 +1,7 @@
 //! Command handlers. Each handler authorizes, validates, stages state changes and emits at
 //! least one journal event through the transaction; the caller commits atomically.
 
+pub(crate) mod evidence;
 mod execution;
 mod extensions;
 mod graph;
@@ -165,6 +166,35 @@ pub(crate) fn dispatch(tx: &mut Tx<'_>, ctx: &Ctx, cmd: Command) -> Result<Comma
             lease,
             reason,
         } => execution::fail(tx, ctx, e, lease, reason),
+        RegisterEvidence {
+            pack,
+            generation,
+            candidate,
+            kind,
+            payload,
+            schema,
+            sources,
+            extension,
+        } => evidence::register_evidence(
+            tx, ctx, pack, generation, candidate, kind, payload, schema, sources, extension,
+        ),
+        RunVerification {
+            pack,
+            generation,
+            verifier,
+            config,
+            evidence: e,
+        } => evidence::run_verification(tx, ctx, pack, generation, verifier, config, e),
+        RunEvaluation {
+            pack,
+            generation,
+            evaluator,
+            config,
+            inputs,
+        } => evidence::run_evaluation(tx, ctx, pack, generation, evaluator, config, inputs),
+        RefreshQualification { pack, generation } => {
+            evidence::refresh_qualification(tx, ctx, pack, generation)
+        }
         other => Err(openaevc_protocol::err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()
