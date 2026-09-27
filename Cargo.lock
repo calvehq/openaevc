@@ -427,6 +427,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-execution"
+version = "0.1.0"
+dependencies = [
+ "openaevc-authority",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "serde_json",
+]
+
+[[package]]
 name = "openaevc-ext-conformance-fixtures"
 version = "0.1.0"
 dependencies = [
@@ -498,6 +509,7 @@ dependencies = [
  "openaevc-canonical",
  "openaevc-core",
  "openaevc-crypto",
+ "openaevc-execution",
  "openaevc-extension-contract",
  "openaevc-policy",
  "openaevc-protocol",
@@ -532,6 +544,7 @@ dependencies = [
  "openaevc-canonical",
  "openaevc-core",
  "openaevc-crypto",
+ "openaevc-execution",
  "openaevc-protocol",
  "openaevc-runtime",
  "openaevc-store",

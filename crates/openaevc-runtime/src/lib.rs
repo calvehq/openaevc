@@ -111,6 +111,7 @@ pub(crate) struct Shared {
     pub runtime_principal: PrincipalId,
     pub instance: RuntimeInstanceId,
     pub config: RuntimeConfig,
+    pub notify: tokio::sync::watch::Sender<u64>,
 }
 
 /// Authenticated request context handed to handlers.
@@ -127,7 +128,6 @@ pub(crate) struct Ctx {
 pub struct Runtime {
     shared: Shared,
     lock: Mutex<()>,
-    notify: tokio::sync::watch::Sender<u64>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -157,12 +157,11 @@ impl Runtime {
             signer: deps.signer,
             runtime_principal: deps.runtime_principal,
             config,
+            notify: tokio::sync::watch::channel(0).0,
         };
-        let (notify, _) = tokio::sync::watch::channel(0);
         let rt = Runtime {
             shared,
             lock: Mutex::new(()),
-            notify,
         };
         {
             let _g = rt.guard()?;
@@ -197,7 +196,7 @@ impl Runtime {
 
     /// Receives a new value after every commit (event-stream wake-ups).
     pub fn subscribe_notifications(&self) -> tokio::sync::watch::Receiver<u64> {
-        self.notify.subscribe()
+        self.shared.notify.subscribe()
     }
 
     fn check_version<T>(env: &Envelope<T>) -> Result<()> {
@@ -418,7 +417,7 @@ impl Runtime {
             issued_at: env.issued_at,
         });
         self.shared.store.commit(batch)?;
-        self.notify.send_modify(|v| *v += 1);
+        self.shared.notify.send_modify(|v| *v += 1);
         Ok(CommandReceipt {
             receipt: receipt_obj.digest(),
             request_id: env.request_id,
@@ -446,7 +445,7 @@ impl Runtime {
         let events = tx.finish_events()?;
         let batch = tx.into_batch(events)?;
         self.shared.store.commit(batch)?;
-        self.notify.send_modify(|v| *v += 1);
+        self.shared.notify.send_modify(|v| *v += 1);
         Ok(())
     }
 
@@ -473,7 +472,7 @@ impl Runtime {
         for ns in self.shared.store.namespaces()? {
             recovery::expire_leases(&self.shared, ns)?;
         }
-        self.notify.send_modify(|v| *v += 1);
+        self.shared.notify.send_modify(|v| *v += 1);
         Ok(())
     }
 

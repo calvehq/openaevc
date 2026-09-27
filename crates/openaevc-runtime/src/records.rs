@@ -16,6 +16,10 @@ pub(crate) const WORK_UNIT: &str = "wu";
 pub(crate) const WU_EXECUTION: &str = "wu_exec";
 pub(crate) const EXTENSION: &str = "extension";
 pub(crate) const PROVIDER: &str = "provider";
+pub(crate) const EXECUTION: &str = "execution";
+/// Non-terminal executions of a Namespace (lease sweep index).
+pub(crate) const ACTIVE_EXECUTIONS: &str = "active_exe";
+pub(crate) const EXECUTION_IDEMPOTENCY: &str = "exe_idem";
 
 pub(crate) fn generation_key(
     ns: &NamespaceId,

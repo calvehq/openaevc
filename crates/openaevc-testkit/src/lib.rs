@@ -472,3 +472,279 @@ impl Harness {
             .expect("register extension")
     }
 }
+
+pub const PROVIDER: &str = "org.openaevc.testkit.provider";
+pub const HARNESS: &str = "org.openaevc.testkit.harness";
+pub const WORKER_KIND: &str = "org.openaevc.testkit.worker";
+pub const KV: &str = "org.openaevc.reference.kv";
+
+pub fn kv_resource(key: &str) -> ResourceRef {
+    ResourceRef {
+        kind: "kv.entry".into(),
+        locator: key.into(),
+        version: None,
+        extension: KV.into(),
+    }
+}
+
+pub fn kv_set(key: &str, value: &str) -> EffectProposal {
+    EffectProposal {
+        kind: "kv.set".into(),
+        target: kv_resource(key),
+        payload: serde_json::json!({"value": value}),
+        preconditions: vec![],
+        outputs: vec![],
+    }
+}
+
+pub fn kv_delete(key: &str) -> EffectProposal {
+    EffectProposal {
+        kind: "kv.delete".into(),
+        target: kv_resource(key),
+        payload: serde_json::json!({}),
+        preconditions: vec![],
+        outputs: vec![],
+    }
+}
+
+pub fn provider_descriptor(principal: PrincipalId, resumable: bool) -> ProviderDescriptor {
+    ProviderDescriptor {
+        id: PROVIDER.into(),
+        version: "0.1.0".into(),
+        worker_kinds: vec![WORKER_KIND.into()],
+        harnesses: vec![HARNESS.into()],
+        required_actions: vec![],
+        cancellation: true,
+        resumable,
+        heartbeat: true,
+        limits: BTreeMap::new(),
+        provenance_fields: vec![],
+        principal,
+    }
+}
+
+/// Parsed typed ID from a receipt's `id`.
+pub fn receipt_id<T: std::str::FromStr>(r: &CommandReceipt) -> T
+where
+    T::Err: std::fmt::Debug,
+{
+    r.result
+        .id
+        .as_deref()
+        .expect("receipt id")
+        .parse()
+        .expect("typed id")
+}
+
+impl Harness {
+    /// Registers reference-kv and the testkit provider (principal = root).
+    pub fn setup_kv(&self, root: &Identity, ns: NamespaceId, ext: &Extensions) {
+        self.register_extension(root, ns, ext, "openaevc-ext-reference-kv");
+        self.client(root, ns)
+            .cmd(Command::RegisterProvider {
+                provider: provider_descriptor(root.id(), false),
+            })
+            .expect("register provider");
+    }
+
+    pub fn create_pack(&self, who: &Identity, ns: NamespaceId) -> PackId {
+        receipt_id(
+            &self
+                .client(who, ns)
+                .cmd(Command::CreateChangePack {
+                    spec: PackSpec::default(),
+                })
+                .expect("create pack"),
+        )
+    }
+
+    pub fn pack(&self, who: &Identity, ns: NamespaceId, pack: PackId) -> ChangePack {
+        serde_json::from_value(
+            self.client(who, ns)
+                .query(Query::GetChangePack {
+                    pack,
+                    generation: None,
+                })
+                .expect("get pack"),
+        )
+        .expect("pack")
+    }
+
+    pub fn add_work(&self, who: &Identity, ns: NamespaceId, pack: PackId) -> WorkUnitId {
+        let g = self.pack(who, ns, pack).generation;
+        receipt_id(
+            &self
+                .client(who, ns)
+                .cmd(Command::AddWorkUnit {
+                    pack,
+                    expected_generation: g,
+                    kind: "org.example.task".into(),
+                    spec: None,
+                    depends_on: vec![],
+                })
+                .expect("add work unit"),
+        )
+    }
+
+    pub fn execution_request(
+        &self,
+        pack: PackId,
+        generation: u64,
+        work_unit: WorkUnitId,
+    ) -> ExecutionRequest {
+        ExecutionRequest {
+            pack,
+            expected_generation: generation,
+            work_unit,
+            provider: PROVIDER.into(),
+            harness: HARNESS.into(),
+            worker: Some(WorkerInfo {
+                id: "worker-1".into(),
+                kind: WORKER_KIND.into(),
+                attributes: BTreeMap::new(),
+            }),
+            allowed_resources: vec![ResourceSelector {
+                kind: "kv.entry".into(),
+                locator_prefix: None,
+            }],
+            allowed_effects: vec!["kv.set".into(), "kv.delete".into()],
+            context: vec![],
+            timeout_ms: 60_000,
+            budget: BTreeMap::new(),
+            max_attempts: 3,
+            idempotency_key: b64::encode(&self.ids.next_bytes()),
+            retry_of: None,
+        }
+    }
+
+    /// Starts an execution for `work_unit` at the pack's current generation.
+    pub fn start(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+        work_unit: WorkUnitId,
+    ) -> (ExecutionId, Lease) {
+        let g = self.pack(who, ns, pack).generation;
+        let r = self
+            .client(who, ns)
+            .cmd(Command::StartExecution {
+                request: self.execution_request(pack, g, work_unit),
+            })
+            .expect("start execution");
+        (receipt_id(&r), r.result.lease.expect("lease"))
+    }
+
+    /// Runs `harness` for a new work unit of `pack` to completion; returns the execution.
+    pub fn run(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+        harness: &mut dyn openaevc_execution::Harness,
+    ) -> ExecutionId {
+        let wu = self.add_work(who, ns, pack);
+        let (exe, lease) = self.start(who, ns, pack, wu);
+        let mut session = ClientSession {
+            client: self.client(who, ns),
+            execution: exe,
+            lease: lease.id,
+            generation: lease.generation,
+        };
+        session.heartbeat().expect("heartbeat");
+        harness
+            .run("org.example.task", None, &mut session)
+            .expect("harness run");
+        self.client(who, ns)
+            .cmd(Command::CompleteExecution {
+                execution: exe,
+                lease: lease.id,
+            })
+            .expect("complete");
+        exe
+    }
+}
+
+/// [`openaevc_execution::ExecutionSession`] backed by signed runtime commands.
+pub struct ClientSession<'h> {
+    pub client: Client<'h>,
+    pub execution: ExecutionId,
+    pub lease: LeaseId,
+    pub generation: u64,
+}
+
+impl std::fmt::Debug for ClientSession<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClientSession")
+            .field("execution", &self.execution)
+            .finish()
+    }
+}
+
+use openaevc_execution::ExecutionSession as _;
+
+impl openaevc_execution::ExecutionSession for ClientSession<'_> {
+    fn heartbeat(&mut self) -> Result<(), ProtocolError> {
+        self.client
+            .cmd(Command::HeartbeatExecution {
+                execution: self.execution,
+                lease: self.lease,
+                generation: self.generation,
+            })
+            .map(drop)
+    }
+
+    fn submit_effect(&mut self, effect: EffectProposal) -> Result<bool, ProtocolError> {
+        let r = self.client.cmd(Command::SubmitEffectProposal {
+            execution: self.execution,
+            lease: self.lease,
+            effect,
+        })?;
+        Ok(r.result.state.as_deref() == Some("APPLIED"))
+    }
+
+    fn observe(&mut self, kind: &str, payload: Value) -> Result<ObservationId, ProtocolError> {
+        let r = self.client.cmd(Command::AppendObservation {
+            execution: self.execution,
+            lease: self.lease,
+            kind: kind.into(),
+            payload: Some(payload),
+            blob: None,
+            related_resources: vec![],
+            related_effects: vec![],
+        })?;
+        Ok(receipt_id(&r))
+    }
+}
+
+/// Deterministic reference harness: submits a fixed list of effects, recording one
+/// observation per effect.
+#[derive(Debug, Clone)]
+pub struct ScriptedHarness {
+    pub effects: Vec<EffectProposal>,
+}
+
+impl openaevc_execution::Harness for ScriptedHarness {
+    fn id(&self) -> &str {
+        HARNESS
+    }
+
+    fn run(
+        &mut self,
+        _kind: &str,
+        _spec: Option<&Value>,
+        session: &mut dyn openaevc_execution::ExecutionSession,
+    ) -> Result<(), String> {
+        for e in self.effects.clone() {
+            let key = e.target.locator.clone();
+            let applied = session.submit_effect(e).map_err(|e| e.to_string())?;
+            session
+                .observe(
+                    "org.openaevc.testkit.effect",
+                    serde_json::json!({"key": key, "applied": applied}),
+                )
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+}

@@ -8,6 +8,7 @@ members = [
     "crates/openaevc-authority",
     "crates/openaevc-policy",
     "crates/openaevc-extension-contract",
+    "crates/openaevc-execution",
     "crates/openaevc-store",
     "crates/openaevc-runtime",
     "crates/openaevc-testkit",
@@ -49,6 +50,7 @@ openaevc-authority = { path = "crates/openaevc-authority", version = "0.1.0" }
 openaevc-store = { path = "crates/openaevc-store", version = "0.1.0" }
 openaevc-policy = { path = "crates/openaevc-policy", version = "0.1.0" }
 openaevc-extension-contract = { path = "crates/openaevc-extension-contract", version = "0.1.0" }
+openaevc-execution = { path = "crates/openaevc-execution", version = "0.1.0" }
 openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"

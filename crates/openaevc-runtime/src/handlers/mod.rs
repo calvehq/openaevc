@@ -1,11 +1,13 @@
 //! Command handlers. Each handler authorizes, validates, stages state changes and emits at
 //! least one journal event through the transaction; the caller commits atomically.
 
+mod execution;
 mod extensions;
 mod graph;
 mod namespace;
 pub(crate) mod packs;
 mod promotion;
+pub(crate) use execution::expire_leases;
 pub(crate) use graph::{all_packs, edges, owner, wait_edges, work_status};
 
 use openaevc_protocol::{Command, CommandResult};
@@ -120,17 +122,52 @@ pub(crate) fn dispatch(tx: &mut Tx<'_>, ctx: &Ctx, cmd: Command) -> Result<Comma
         ),
         UnregisterExtension { extension } => extensions::unregister(tx, ctx, extension),
         RegisterProvider { provider } => extensions::register_provider(tx, ctx, provider),
+        StartExecution { request } => execution::start(tx, ctx, request),
+        HeartbeatExecution {
+            execution: e,
+            lease,
+            generation,
+        } => execution::heartbeat(tx, ctx, e, lease, generation),
+        CancelExecution {
+            execution: e,
+            reason,
+        } => execution::cancel(tx, ctx, e, reason),
+        SubmitEffectProposal {
+            execution: e,
+            lease,
+            effect,
+        } => execution::submit_effect(tx, ctx, e, lease, effect),
+        AppendObservation {
+            execution: e,
+            lease,
+            kind,
+            payload,
+            blob,
+            related_resources,
+            related_effects,
+        } => execution::append_observation(
+            tx,
+            ctx,
+            e,
+            lease,
+            kind,
+            payload,
+            blob,
+            related_resources,
+            related_effects,
+        ),
+        CompleteExecution {
+            execution: e,
+            lease,
+        } => execution::complete(tx, ctx, e, lease),
+        FailExecution {
+            execution: e,
+            lease,
+            reason,
+        } => execution::fail(tx, ctx, e, lease, reason),
         other => Err(openaevc_protocol::err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()
         ))),
     }
-}
-
-/// Lease sweep (implemented with the execution subsystem).
-pub(crate) fn expire_leases(
-    _rt: &crate::Shared,
-    _ns: openaevc_protocol::NamespaceId,
-) -> Result<()> {
-    Ok(())
 }

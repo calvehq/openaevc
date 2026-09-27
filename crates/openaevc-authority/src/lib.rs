@@ -299,6 +299,63 @@ pub fn authorize(
     Err(base.with_missing_action(req.action))
 }
 
+/// Authorizes `action` over every resource a selector can match: some valid grant must allow
+/// the action with selectors covering `scope` (a grant without selectors covers everything).
+pub fn authorize_scope(
+    view: &dyn AuthorityView,
+    now: Timestamp,
+    principal: PrincipalId,
+    action: &str,
+    scope: &ResourceSelector,
+) -> Result<Authorization, ProtocolError> {
+    if view.roots().contains(&principal) {
+        return Ok(Authorization {
+            root: true,
+            grants: vec![],
+        });
+    }
+    let mut blocked: Option<ProtocolError> = None;
+    for (digest, g) in view.grants_for_subject(&principal) {
+        let covers = g.body.actions.iter().any(|a| action_matches(a, action))
+            && (g.body.resources.is_empty()
+                || g.body.resources.iter().any(|s| selector_covers(s, scope)));
+        if !covers {
+            continue;
+        }
+        match validate_grant(view, now, &g) {
+            Ok(parents) => {
+                let mut grants = vec![digest];
+                grants.extend(parents);
+                return Ok(Authorization {
+                    root: false,
+                    grants,
+                });
+            }
+            Err(e) => blocked = Some(e),
+        }
+    }
+    let base = match blocked {
+        Some(e)
+            if matches!(
+                e.code,
+                ErrorCode::CapabilityRevoked | ErrorCode::CapabilityExpired
+            ) =>
+        {
+            e
+        }
+        _ => err::forbidden(format!(
+            "no valid capability allows {action} over {}{}",
+            scope.kind,
+            scope
+                .locator_prefix
+                .as_deref()
+                .map(|p| format!(":{p}*"))
+                .unwrap_or_default()
+        )),
+    };
+    Err(base.with_missing_action(action))
+}
+
 /// Resolves the effective principal of a request: the authenticated `caller`, or the ACTOR it
 /// acts as. Only key-bearing principals authenticate; an ACTOR must be linked to the caller.
 pub fn resolve_caller(
