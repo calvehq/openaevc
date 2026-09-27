@@ -260,8 +260,8 @@ mod tests {
     use super::*;
 
     const RAW: [u8; 16] = [
-        0x01, 0x92, 0x3a, 0x4b, 0x5c, 0x6d, 0x70, 0x01, 0x80, 0x11, 0x22, 0x33, 0x44, 0x55,
-        0x66, 0x77,
+        0x01, 0x92, 0x3a, 0x4b, 0x5c, 0x6d, 0x70, 0x01, 0x80, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+        0x77,
     ];
 
     #[test]
@@ -283,7 +283,10 @@ mod tests {
     #[test]
     fn rejects_wrong_prefix_length_and_non_v7() {
         let id = ChangePackId::from_bytes(RAW).unwrap().to_string();
-        assert!(id.replacen("cpk_", "rpk_", 1).parse::<ChangePackId>().is_err());
+        assert!(id
+            .replacen("cpk_", "rpk_", 1)
+            .parse::<ChangePackId>()
+            .is_err());
         assert!(id[..id.len() - 1].parse::<ChangePackId>().is_err());
         let mut v4 = RAW;
         v4[6] = 0x40;

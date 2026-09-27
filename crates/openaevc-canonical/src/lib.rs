@@ -146,7 +146,10 @@ struct Decoder<'a> {
 impl<'a> Decoder<'a> {
     fn take(&mut self, n: usize) -> Result<&'a [u8], CanonicalError> {
         let end = self.pos.checked_add(n).ok_or(CanonicalError::Truncated)?;
-        let s = self.buf.get(self.pos..end).ok_or(CanonicalError::Truncated)?;
+        let s = self
+            .buf
+            .get(self.pos..end)
+            .ok_or(CanonicalError::Truncated)?;
         self.pos = end;
         Ok(s)
     }
@@ -155,9 +158,22 @@ impl<'a> Decoder<'a> {
         let (n, min) = match info {
             0..=23 => return Ok(u64::from(info)),
             24 => (u64::from(self.take(1)?[0]), 24),
-            25 => (u64::from(u16::from_be_bytes(self.take(2)?.try_into().unwrap_or_default())), 0x100),
-            26 => (u64::from(u32::from_be_bytes(self.take(4)?.try_into().unwrap_or_default())), 0x1_0000),
-            27 => (u64::from_be_bytes(self.take(8)?.try_into().unwrap_or_default()), 0x1_0000_0000),
+            25 => (
+                u64::from(u16::from_be_bytes(
+                    self.take(2)?.try_into().unwrap_or_default(),
+                )),
+                0x100,
+            ),
+            26 => (
+                u64::from(u32::from_be_bytes(
+                    self.take(4)?.try_into().unwrap_or_default(),
+                )),
+                0x1_0000,
+            ),
+            27 => (
+                u64::from_be_bytes(self.take(8)?.try_into().unwrap_or_default()),
+                0x1_0000_0000,
+            ),
             31 => return Err(CanonicalError::Indefinite),
             _ => return Err(CanonicalError::Unsupported(info)),
         };
@@ -281,7 +297,8 @@ pub fn from_canonical<T: Serialize + DeserializeOwned>(bytes: &[u8]) -> Result<T
 /// Decodes a JSON-model value into a protocol type, requiring that it re-serializes to the
 /// same value (same rule as [`from_canonical`], for JSON transport input).
 pub fn from_value<T: Serialize + DeserializeOwned>(v: Value) -> Result<T, CanonicalError> {
-    let t: T = serde_json::from_value(v.clone()).map_err(|e| CanonicalError::Schema(e.to_string()))?;
+    let t: T =
+        serde_json::from_value(v.clone()).map_err(|e| CanonicalError::Schema(e.to_string()))?;
     if encode(&to_value(&t)?)? != encode(&v)? {
         return Err(CanonicalError::NotCanonical);
     }

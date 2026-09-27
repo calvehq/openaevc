@@ -14,7 +14,9 @@ pub const SUPPORTED_CONTRACT: VersionRange = VersionRange::new(CONTRACT_VERSION,
 
 /// Privileged operations an extension may request through structured host calls.
 /// Declarations in a manifest are requests; the runtime grants per invocation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 pub enum HostCapability {
     #[serde(rename = "resource.read")]
     ResourceRead,
@@ -108,7 +110,10 @@ mod tests {
 
     #[test]
     fn host_capabilities_use_dotted_names() {
-        assert_eq!(serde_json::to_value(HostCapability::ProcessExecute).unwrap(), json!("process.execute"));
+        assert_eq!(
+            serde_json::to_value(HostCapability::ProcessExecute).unwrap(),
+            json!("process.execute")
+        );
         let c: HostCapability = serde_json::from_value(json!("resource.read")).unwrap();
         assert_eq!(c, HostCapability::ResourceRead);
     }

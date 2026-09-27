@@ -33,8 +33,11 @@ pub fn check_pack_transition(from: PackState, to: PackState) -> Result<(), Proto
         } else {
             openaevc_protocol::ErrorCode::InvalidTransition
         };
-        Err(ProtocolError::new(code, format!("pack cannot move from {} to {}", from.as_str(), to.as_str()))
-            .with_transition(from.as_str(), to.as_str()))
+        Err(ProtocolError::new(
+            code,
+            format!("pack cannot move from {} to {}", from.as_str(), to.as_str()),
+        )
+        .with_transition(from.as_str(), to.as_str()))
     }
 }
 
@@ -50,7 +53,10 @@ pub fn execution_transition_allowed(from: ExecutionState, to: ExecutionState) ->
     )
 }
 
-pub fn check_execution_transition(from: ExecutionState, to: ExecutionState) -> Result<(), ProtocolError> {
+pub fn check_execution_transition(
+    from: ExecutionState,
+    to: ExecutionState,
+) -> Result<(), ProtocolError> {
     if execution_transition_allowed(from, to) {
         Ok(())
     } else {
@@ -59,8 +65,15 @@ pub fn check_execution_transition(from: ExecutionState, to: ExecutionState) -> R
         } else {
             openaevc_protocol::ErrorCode::InvalidTransition
         };
-        Err(ProtocolError::new(code, format!("execution cannot move from {} to {}", from.as_str(), to.as_str()))
-            .with_transition(from.as_str(), to.as_str()))
+        Err(ProtocolError::new(
+            code,
+            format!(
+                "execution cannot move from {} to {}",
+                from.as_str(),
+                to.as_str()
+            ),
+        )
+        .with_transition(from.as_str(), to.as_str()))
     }
 }
 
@@ -83,7 +96,13 @@ mod tests {
         assert!(!pack_transition_allowed(P::Open, P::Promoted));
         assert!(!pack_transition_allowed(P::Open, P::Qualified));
         assert!(!pack_transition_allowed(P::Sealed, P::Promoted));
-        for to in [P::Open, P::Sealed, P::Qualified, P::Abandoned, P::Quarantined] {
+        for to in [
+            P::Open,
+            P::Sealed,
+            P::Qualified,
+            P::Abandoned,
+            P::Quarantined,
+        ] {
             assert!(!pack_transition_allowed(P::Promoted, to));
             assert!(!pack_transition_allowed(P::Abandoned, to));
         }

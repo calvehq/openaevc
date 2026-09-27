@@ -80,8 +80,13 @@ impl FromStr for Timestamp {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let err = || TimestampParseError(s.to_owned());
         let b = s.as_bytes();
-        if b.len() < 20 || b[4] != b'-' || b[7] != b'-' || b[10] != b'T' || b[13] != b':'
-            || b[16] != b':' || *b.last().ok_or_else(err)? != b'Z'
+        if b.len() < 20
+            || b[4] != b'-'
+            || b[7] != b'-'
+            || b[10] != b'T'
+            || b[13] != b':'
+            || b[16] != b':'
+            || *b.last().ok_or_else(err)? != b'Z'
         {
             return Err(err());
         }
@@ -99,14 +104,20 @@ impl FromStr for Timestamp {
             0
         } else {
             let digits = frac.strip_prefix('.').ok_or_else(err)?;
-            if digits.is_empty() || digits.len() > 9 || !digits.bytes().all(|c| c.is_ascii_digit()) {
+            if digits.is_empty() || digits.len() > 9 || !digits.bytes().all(|c| c.is_ascii_digit())
+            {
                 return Err(err());
             }
             let n: i128 = digits.parse().map_err(|_| err())?;
             n * 10i128.pow(9 - digits.len() as u32)
         };
-        if y < 1970 || !(1..=12).contains(&mo) || d == 0 || d > days_in_month(y, mo) || h > 23
-            || mi > 59 || sec > 59
+        if y < 1970
+            || !(1..=12).contains(&mo)
+            || d == 0
+            || d > days_in_month(y, mo)
+            || h > 23
+            || mi > 59
+            || sec > 59
         {
             return Err(err());
         }

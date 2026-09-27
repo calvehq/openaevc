@@ -169,7 +169,10 @@ impl ProtocolError {
     }
 
     pub fn with_transition(mut self, from: impl Into<String>, to: impl Into<String>) -> Self {
-        self.transition = Some(TransitionInfo { from: from.into(), to: to.into() });
+        self.transition = Some(TransitionInfo {
+            from: from.into(),
+            to: to.into(),
+        });
         self
     }
 

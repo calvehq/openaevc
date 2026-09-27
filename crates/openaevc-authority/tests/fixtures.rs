@@ -26,10 +26,17 @@ impl AuthorityView for View {
         self.principals.iter().find(|p| &p.id == id).cloned()
     }
     fn grant(&self, d: &Digest) -> Option<SignedGrant> {
-        self.grants.iter().find(|(x, _)| x == d).map(|(_, g)| g.clone())
+        self.grants
+            .iter()
+            .find(|(x, _)| x == d)
+            .map(|(_, g)| g.clone())
     }
     fn grants_for_subject(&self, s: &PrincipalId) -> Vec<(Digest, SignedGrant)> {
-        self.grants.iter().filter(|(_, g)| &g.body.subject == s).cloned().collect()
+        self.grants
+            .iter()
+            .filter(|(_, g)| &g.body.subject == s)
+            .cloned()
+            .collect()
     }
     fn is_revoked(&self, id: &GrantId) -> bool {
         self.revoked.contains(id)
@@ -67,12 +74,30 @@ fn authorization_matrix() {
             (d, grant)
         })
         .collect();
-    let mut view = View { ns, roots: serde_json::from_value(f["roots"].clone()).unwrap(), principals, grants, revoked: HashSet::new() };
+    let mut view = View {
+        ns,
+        roots: serde_json::from_value(f["roots"].clone()).unwrap(),
+        principals,
+        grants,
+        revoked: HashSet::new(),
+    };
     for c in f["cases"].as_array().unwrap() {
-        view.revoked = serde_json::from_value(c.get("revoked").cloned().unwrap_or(Value::Array(vec![]))).unwrap();
+        view.revoked =
+            serde_json::from_value(c.get("revoked").cloned().unwrap_or(Value::Array(vec![])))
+                .unwrap();
         let principal: PrincipalId = serde_json::from_value(c["principal"].clone()).unwrap();
-        let resource: Option<ResourceRef> = c.get("resource").map(|r| serde_json::from_value(r.clone()).unwrap());
-        let got = authorize(&view, now, &Request { principal, action: c["action"].as_str().unwrap(), resource: resource.as_ref() });
+        let resource: Option<ResourceRef> = c
+            .get("resource")
+            .map(|r| serde_json::from_value(r.clone()).unwrap());
+        let got = authorize(
+            &view,
+            now,
+            &Request {
+                principal,
+                action: c["action"].as_str().unwrap(),
+                resource: resource.as_ref(),
+            },
+        );
         match (c["expect"].as_str().unwrap(), got) {
             ("ALLOW", Ok(a)) => {
                 let chain: Vec<Digest> = serde_json::from_value(c["chain"].clone()).unwrap();

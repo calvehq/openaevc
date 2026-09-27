@@ -17,29 +17,50 @@ fn root() -> PathBuf {
 
 macro_rules! roots {
     ($gen:ident, $($t:ty),* $(,)?) => {{
-        let mut names = Vec::new();
-        $( names.push(serde_json::to_value($gen.subschema_for::<$t>()).unwrap()); )*
-        names
+        $( $gen.subschema_for::<$t>(); )*
     }};
 }
 
 pub fn json_schema() -> Value {
     let mut gen = SchemaSettings::draft2020_12().into_generator();
-    let _ = roots!(gen,
-        p::ObjectEnvelope, p::Blob, p::SignedGrant, p::Revocation, p::PolicyDocument,
-        p::PolicyDecision, p::ExtensionManifest, p::Candidate, p::Observation, p::Evidence,
-        p::VerificationResult, p::EvaluationResult, p::PromotedPack, p::PromotionRecord,
-        p::Receipt, p::Baseline, p::JournalCheckpoint,
-        p::CommandEnvelope, p::QueryEnvelope, p::Command, p::Query, p::CommandReceipt,
-        p::CommandResult, p::Event, p::EventFilter, p::ProtocolError, p::RuntimeInfo,
-        p::Namespace, p::Principal, p::ChangePack, p::Execution, p::ActiveEdge,
-        p::ProviderDescriptor, p::Facts,
+    roots!(
+        gen,
+        p::ObjectEnvelope,
+        p::Blob,
+        p::SignedGrant,
+        p::Revocation,
+        p::PolicyDocument,
+        p::PolicyDecision,
+        p::ExtensionManifest,
+        p::Candidate,
+        p::Observation,
+        p::Evidence,
+        p::VerificationResult,
+        p::EvaluationResult,
+        p::PromotedPack,
+        p::PromotionRecord,
+        p::Receipt,
+        p::Baseline,
+        p::JournalCheckpoint,
+        p::CommandEnvelope,
+        p::QueryEnvelope,
+        p::Command,
+        p::Query,
+        p::CommandReceipt,
+        p::CommandResult,
+        p::Event,
+        p::EventFilter,
+        p::ProtocolError,
+        p::RuntimeInfo,
+        p::Namespace,
+        p::Principal,
+        p::ChangePack,
+        p::Execution,
+        p::ActiveEdge,
+        p::ProviderDescriptor,
+        p::Facts,
     );
-    let defs: BTreeMap<String, Value> = gen
-        .take_definitions(true)
-        .into_iter()
-        .map(|(k, v)| (k, v))
-        .collect();
+    let defs: BTreeMap<String, Value> = gen.take_definitions(true).into_iter().collect();
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json",
@@ -51,7 +72,12 @@ pub fn json_schema() -> Value {
 
 fn cddl_type(v: &Value) -> String {
     if let Some(r) = v.get("$ref").and_then(Value::as_str) {
-        return r.rsplit('/').next().unwrap_or("any").replace(['<', '>', ','], "_").to_lowercase();
+        return r
+            .rsplit('/')
+            .next()
+            .unwrap_or("any")
+            .replace(['<', '>', ','], "_")
+            .to_lowercase();
     }
     for key in ["oneOf", "anyOf"] {
         if let Some(alts) = v.get(key).and_then(Value::as_array) {
@@ -60,17 +86,31 @@ fn cddl_type(v: &Value) -> String {
                 .filter(|a| a.get("type").and_then(Value::as_str) != Some("null"))
                 .map(cddl_type)
                 .collect();
-            return if parts.len() == 1 { parts[0].clone() } else { format!("({})", parts.join(" / ")) };
+            return if parts.len() == 1 {
+                parts[0].clone()
+            } else {
+                format!("({})", parts.join(" / "))
+            };
         }
     }
     if let Some(c) = v.get("const") {
         return c.to_string();
     }
     if let Some(e) = v.get("enum").and_then(Value::as_array) {
-        return format!("({})", e.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(" / "));
+        return format!(
+            "({})",
+            e.iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" / ")
+        );
     }
     let ty = match v.get("type") {
-        Some(Value::Array(ts)) => ts.iter().find(|t| *t != "null").and_then(Value::as_str).unwrap_or("any"),
+        Some(Value::Array(ts)) => ts
+            .iter()
+            .find(|t| *t != "null")
+            .and_then(Value::as_str)
+            .unwrap_or("any"),
         Some(Value::String(t)) => t.as_str(),
         _ => "any",
     };
@@ -80,11 +120,18 @@ fn cddl_type(v: &Value) -> String {
             None => "tstr".into(),
         },
         "integer" => {
-            if v.get("minimum").and_then(Value::as_i64) == Some(0) { "uint".into() } else { "int".into() }
+            if v.get("minimum").and_then(Value::as_i64) == Some(0) {
+                "uint".into()
+            } else {
+                "int".into()
+            }
         }
         "boolean" => "bool".into(),
         "array" => {
-            let item = v.get("items").map(cddl_type).unwrap_or_else(|| "any".into());
+            let item = v
+                .get("items")
+                .map(cddl_type)
+                .unwrap_or_else(|| "any".into());
             format!("[* {item}]")
         }
         "object" => cddl_object(v),
@@ -102,7 +149,11 @@ fn cddl_object(v: &Value) -> String {
     let mut fields = Vec::new();
     if let Some(props) = props {
         for (k, pv) in props {
-            let opt = if required.contains(&k.as_str()) { "" } else { "? " };
+            let opt = if required.contains(&k.as_str()) {
+                ""
+            } else {
+                "? "
+            };
             fields.push(format!("{opt}\"{k}\": {}", cddl_type(pv)));
         }
     }
@@ -133,7 +184,10 @@ fn main() {
     let check = std::env::args().any(|a| a == "--check");
     let schema = json_schema();
     let files = [
-        ("schemas/json/openaevc.schema.json", serde_json::to_string_pretty(&schema).unwrap() + "\n"),
+        (
+            "schemas/json/openaevc.schema.json",
+            serde_json::to_string_pretty(&schema).unwrap() + "\n",
+        ),
         ("schemas/cddl/openaevc.cddl", cddl(&schema)),
     ];
     let mut stale = false;

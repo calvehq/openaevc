@@ -7,12 +7,18 @@ use openaevc_protocol::{Digest, PublicKey};
 use serde_json::Value;
 
 fn load(name: &str) -> Value {
-    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/canonical").join(name);
-    serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p:?}: {e}"))).unwrap()
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/canonical")
+        .join(name);
+    serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p:?}: {e}")))
+        .unwrap()
 }
 
 fn unhex(s: &str) -> Vec<u8> {
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 fn hex(b: &[u8]) -> String {
@@ -27,14 +33,32 @@ fn values_encode_to_golden_bytes_and_digests() {
     for c in cases {
         let bytes = openaevc_canonical::encode(&c["json"]).unwrap();
         assert_eq!(hex(&bytes), c["cbor_hex"], "{}", c["name"]);
-        assert_eq!(openaevc_crypto::sha256(&bytes).to_string(), c["digest"], "{}", c["name"]);
-        assert_eq!(openaevc_canonical::decode(&bytes).unwrap(), c["json"], "{}", c["name"]);
+        assert_eq!(
+            openaevc_crypto::sha256(&bytes).to_string(),
+            c["digest"],
+            "{}",
+            c["name"]
+        );
+        assert_eq!(
+            openaevc_canonical::decode(&bytes).unwrap(),
+            c["json"],
+            "{}",
+            c["name"]
+        );
     }
     for c in f["invalid_cbor"].as_array().unwrap() {
-        assert!(openaevc_canonical::decode(&unhex(c["cbor_hex"].as_str().unwrap())).is_err(), "{}", c["name"]);
+        assert!(
+            openaevc_canonical::decode(&unhex(c["cbor_hex"].as_str().unwrap())).is_err(),
+            "{}",
+            c["name"]
+        );
     }
     for c in f["invalid_json"].as_array().unwrap() {
-        assert!(openaevc_canonical::encode(&c["json"]).is_err(), "{}", c["name"]);
+        assert!(
+            openaevc_canonical::encode(&c["json"]).is_err(),
+            "{}",
+            c["name"]
+        );
     }
 }
 
@@ -50,14 +74,27 @@ fn every_object_kind_has_a_golden_fixture() {
         let bytes = unhex(c["cbor_hex"].as_str().unwrap());
         let digest: Digest = c["digest"].as_str().unwrap().parse().unwrap();
         let obj = ImmutableObject::from_bytes(&bytes, Some(digest)).unwrap();
-        assert_eq!(openaevc_canonical::to_value(obj.envelope()).unwrap(), c["json"], "{}", c["name"]);
-        let refs: Vec<String> = obj.references().unwrap().iter().map(|d| d.to_string()).collect();
+        assert_eq!(
+            openaevc_canonical::to_value(obj.envelope()).unwrap(),
+            c["json"],
+            "{}",
+            c["name"]
+        );
+        let refs: Vec<String> = obj
+            .references()
+            .unwrap()
+            .iter()
+            .map(|d| d.to_string())
+            .collect();
         let want: Vec<String> = serde_json::from_value(c["references"].clone()).unwrap();
         assert_eq!(refs, want, "{}", c["name"]);
     }
     for c in f["invalid"].as_array().unwrap() {
         let bytes = unhex(c["cbor_hex"].as_str().unwrap());
-        let expected = c.get("digest").and_then(Value::as_str).map(|d| d.parse().unwrap());
+        let expected = c
+            .get("digest")
+            .and_then(Value::as_str)
+            .map(|d| d.parse().unwrap());
         let e = ImmutableObject::from_bytes(&bytes, expected).unwrap_err();
         assert_eq!(e.code.as_str(), c["error"], "{}", c["name"]);
     }
@@ -95,7 +132,11 @@ fn identifier_fixtures() {
     }
     for s in f["invalid"].as_array().unwrap() {
         let s = s.as_str().unwrap();
-        assert!(s.parse::<openaevc_protocol::AnyId>().is_err() && s.parse::<Digest>().is_err()
-            && s.parse::<openaevc_protocol::Timestamp>().is_err(), "{s}");
+        assert!(
+            s.parse::<openaevc_protocol::AnyId>().is_err()
+                && s.parse::<Digest>().is_err()
+                && s.parse::<openaevc_protocol::Timestamp>().is_err(),
+            "{s}"
+        );
     }
 }

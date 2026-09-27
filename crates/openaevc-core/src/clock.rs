@@ -79,9 +79,24 @@ macro_rules! from_uuid {
 }
 
 from_uuid!(
-    NamespaceId, PrincipalId, GrantId, ChangePackId, RevisionPackId, ExecutionId, ObservationId,
-    EvidenceId, VerificationId, EvaluationId, PromotionId, BaselineId, EventId, WorkUnitId,
-    LeaseId, RequestId, EffectId, RuntimeInstanceId
+    NamespaceId,
+    PrincipalId,
+    GrantId,
+    ChangePackId,
+    RevisionPackId,
+    ExecutionId,
+    ObservationId,
+    EvidenceId,
+    VerificationId,
+    EvaluationId,
+    PromotionId,
+    BaselineId,
+    EventId,
+    WorkUnitId,
+    LeaseId,
+    RequestId,
+    EffectId,
+    RuntimeInstanceId
 );
 
 fn uuidv7(ms: u64, rand: [u8; 10]) -> [u8; 16] {
@@ -128,7 +143,10 @@ pub struct SequentialIds {
 
 impl SequentialIds {
     pub fn new(seed: u64) -> Self {
-        SequentialIds { seed, counter: AtomicU64::new(0) }
+        SequentialIds {
+            seed,
+            counter: AtomicU64::new(0),
+        }
     }
 }
 

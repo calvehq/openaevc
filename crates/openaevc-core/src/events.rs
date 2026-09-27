@@ -17,17 +17,31 @@ pub fn event_hash(e: &Event) -> Result<Digest, ProtocolError> {
 
 /// Verifies a contiguous run of events following `(prev_seq, prev_hash)`. Returns the last
 /// `(sequence, hash)`. Fails with `STORAGE_INTEGRITY_ERROR` on any gap, relink or tampering.
-pub fn verify_chain(events: &[Event], prev_seq: Sequence, prev_hash: Digest) -> Result<(Sequence, Digest), ProtocolError> {
+pub fn verify_chain(
+    events: &[Event],
+    prev_seq: Sequence,
+    prev_hash: Digest,
+) -> Result<(Sequence, Digest), ProtocolError> {
     let (mut seq, mut hash) = (prev_seq, prev_hash);
     for e in events {
         if e.sequence != seq + 1 {
-            return Err(err::integrity(format!("journal gap: expected sequence {}, found {}", seq + 1, e.sequence)));
+            return Err(err::integrity(format!(
+                "journal gap: expected sequence {}, found {}",
+                seq + 1,
+                e.sequence
+            )));
         }
         if e.previous_hash != hash {
-            return Err(err::integrity(format!("journal link broken at sequence {}", e.sequence)));
+            return Err(err::integrity(format!(
+                "journal link broken at sequence {}",
+                e.sequence
+            )));
         }
         if event_hash(e)? != e.hash {
-            return Err(err::integrity(format!("journal event {} has been modified", e.sequence)));
+            return Err(err::integrity(format!(
+                "journal event {} has been modified",
+                e.sequence
+            )));
         }
         seq = e.sequence;
         hash = e.hash;
@@ -66,7 +80,10 @@ mod tests {
         let b = ev(2, a.hash);
         let c = ev(3, b.hash);
         let chain = vec![a, b, c];
-        assert_eq!(verify_chain(&chain, 0, Digest::ZERO).unwrap(), (3, chain[2].hash));
+        assert_eq!(
+            verify_chain(&chain, 0, Digest::ZERO).unwrap(),
+            (3, chain[2].hash)
+        );
 
         let mut tampered = chain.clone();
         tampered[1].body = json!({"n": 99});

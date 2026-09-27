@@ -7,5 +7,7 @@ pub mod lifecycle;
 pub mod names;
 pub mod object;
 
-pub use clock::{Clock, FixedClock, FromUuid, IdGenerator, IdGeneratorExt, SequentialIds, SystemClock, UuidV7Ids};
+pub use clock::{
+    Clock, FixedClock, FromUuid, IdGenerator, IdGeneratorExt, SequentialIds, SystemClock, UuidV7Ids,
+};
 pub use object::{sign_envelope, signing_digest, validate_body, ImmutableObject};

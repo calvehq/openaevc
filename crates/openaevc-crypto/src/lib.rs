@@ -92,7 +92,12 @@ impl Signer for SigningKey {
 }
 
 /// Verifies a signature. Fails closed with `UNAUTHORIZED` on any malformed key or signature.
-pub fn verify(key: &PublicKey, domain: Domain, msg: &[u8], sig: &Signature) -> Result<(), ProtocolError> {
+pub fn verify(
+    key: &PublicKey,
+    domain: Domain,
+    msg: &[u8],
+    sig: &Signature,
+) -> Result<(), ProtocolError> {
     let vk = ed25519_dalek::VerifyingKey::from_bytes(key.as_bytes())
         .map_err(|_| err::unauthorized("invalid public key"))?;
     let sig = ed25519_dalek::Signature::from_bytes(sig.as_bytes());
@@ -103,10 +108,17 @@ pub fn verify(key: &PublicKey, domain: Domain, msg: &[u8], sig: &Signature) -> R
 }
 
 pub fn sign_entry(signer: &dyn Signer, domain: Domain, msg: &[u8]) -> SignatureEntry {
-    SignatureEntry { public_key: signer.public_key(), signature: signer.sign(domain, msg) }
+    SignatureEntry {
+        public_key: signer.public_key(),
+        signature: signer.sign(domain, msg),
+    }
 }
 
-pub fn verify_entry(entry: &SignatureEntry, domain: Domain, msg: &[u8]) -> Result<(), ProtocolError> {
+pub fn verify_entry(
+    entry: &SignatureEntry,
+    domain: Domain,
+    msg: &[u8],
+) -> Result<(), ProtocolError> {
     verify(&entry.public_key, domain, msg, &entry.signature)
 }
 
@@ -155,7 +167,10 @@ mod tests {
     #[test]
     fn fingerprint_is_digest_of_raw_key() {
         let key = SigningKey::from_seed([1; 32]);
-        assert_eq!(fingerprint(&key.public_key()), sha256(key.public_key().as_bytes()));
+        assert_eq!(
+            fingerprint(&key.public_key()),
+            sha256(key.public_key().as_bytes())
+        );
     }
 
     #[test]

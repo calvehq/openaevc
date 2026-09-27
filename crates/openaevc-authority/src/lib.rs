@@ -17,8 +17,8 @@
 
 use openaevc_crypto::{Domain, Signer};
 use openaevc_protocol::{
-    err, Digest, ErrorCode, GrantBody, GrantId, NamespaceId, Principal, PrincipalId,
-    PrincipalKind, ProtocolError, ResourceRef, ResourceSelector, SignedGrant, Timestamp,
+    err, Digest, ErrorCode, GrantBody, GrantId, NamespaceId, Principal, PrincipalId, PrincipalKind,
+    ProtocolError, ResourceRef, ResourceSelector, SignedGrant, Timestamp,
 };
 
 /// Maximum delegation chain length evaluated (defense against pathological chains).
@@ -54,16 +54,22 @@ pub struct Authorization {
 /// Signs a grant body with the issuer's key.
 pub fn sign_grant(body: GrantBody, issuer: &dyn Signer) -> Result<SignedGrant, ProtocolError> {
     let msg = openaevc_canonical::to_canonical(&body)?;
-    Ok(SignedGrant { signature: issuer.sign(Domain::Grant, &msg), body })
+    Ok(SignedGrant {
+        signature: issuer.sign(Domain::Grant, &msg),
+        body,
+    })
 }
 
 fn verify_signature(view: &dyn AuthorityView, g: &SignedGrant) -> Result<(), ProtocolError> {
-    let issuer = view
-        .principal(&g.body.issuer)
-        .ok_or_else(|| err::unauthorized(format!("grant issuer {} is not a registered principal", g.body.issuer)))?;
-    let key = issuer
-        .public_key
-        .ok_or_else(|| err::unauthorized(format!("grant issuer {} has no signing key", g.body.issuer)))?;
+    let issuer = view.principal(&g.body.issuer).ok_or_else(|| {
+        err::unauthorized(format!(
+            "grant issuer {} is not a registered principal",
+            g.body.issuer
+        ))
+    })?;
+    let key = issuer.public_key.ok_or_else(|| {
+        err::unauthorized(format!("grant issuer {} has no signing key", g.body.issuer))
+    })?;
     let msg = openaevc_canonical::to_canonical(&g.body)?;
     openaevc_crypto::verify(&key, Domain::Grant, &msg, &g.signature)
 }
@@ -72,7 +78,11 @@ fn verify_signature(view: &dyn AuthorityView, g: &SignedGrant) -> Result<(), Pro
 pub fn action_matches(pattern: &str, action: &str) -> bool {
     pattern == "*"
         || pattern == action
-        || pattern.strip_suffix(".*").is_some_and(|p| action.len() > p.len() + 1 && action.starts_with(p) && action.as_bytes()[p.len()] == b'.')
+        || pattern.strip_suffix(".*").is_some_and(|p| {
+            action.len() > p.len() + 1
+                && action.starts_with(p)
+                && action.as_bytes()[p.len()] == b'.'
+        })
 }
 
 /// Parent action pattern covers everything the child pattern allows.
@@ -84,7 +94,12 @@ pub fn action_covers(parent: &str, child: &str) -> bool {
         return false;
     }
     match child.strip_suffix(".*") {
-        Some(prefix) => parent == child || parent.strip_suffix(".*").is_some_and(|p| action_matches(parent, prefix) || p == prefix),
+        Some(prefix) => {
+            parent == child
+                || parent
+                    .strip_suffix(".*")
+                    .is_some_and(|p| action_matches(parent, prefix) || p == prefix)
+        }
         None => action_matches(parent, child),
     }
 }
@@ -94,7 +109,10 @@ fn kind_matches(pattern: &str, kind: &str) -> bool {
 }
 
 pub fn selector_matches(s: &ResourceSelector, r: &ResourceRef) -> bool {
-    kind_matches(&s.kind, &r.kind) && s.locator_prefix.as_deref().is_none_or(|p| r.locator.starts_with(p))
+    kind_matches(&s.kind, &r.kind)
+        && s.locator_prefix
+            .as_deref()
+            .is_none_or(|p| r.locator.starts_with(p))
 }
 
 /// Parent selector covers everything the child selector selects.
@@ -112,7 +130,10 @@ fn resources_cover(parent: &[ResourceSelector], child: &[ResourceSelector]) -> b
     if parent.is_empty() {
         return true;
     }
-    !child.is_empty() && child.iter().all(|c| parent.iter().any(|p| selector_covers(p, c)))
+    !child.is_empty()
+        && child
+            .iter()
+            .all(|c| parent.iter().any(|p| selector_covers(p, c)))
 }
 
 fn grant_allows(g: &GrantBody, action: &str, resource: Option<&ResourceRef>) -> bool {
@@ -136,13 +157,21 @@ fn subset_violation(parent: &GrantBody, child: &GrantBody) -> Option<&'static st
     if child.not_before < parent.not_before {
         return Some("delegated grant predates its parent");
     }
-    if !child.actions.iter().all(|c| parent.actions.iter().any(|p| action_covers(p, c))) {
+    if !child
+        .actions
+        .iter()
+        .all(|c| parent.actions.iter().any(|p| action_covers(p, c)))
+    {
         return Some("delegated actions exceed the parent grant");
     }
     if !resources_cover(&parent.resources, &child.resources) {
         return Some("delegated resources exceed the parent grant");
     }
-    if !parent.constraints.iter().all(|(k, v)| child.constraints.get(k) == Some(v)) {
+    if !parent
+        .constraints
+        .iter()
+        .all(|(k, v)| child.constraints.get(k) == Some(v))
+    {
         return Some("delegated grant drops a parent constraint");
     }
     None
@@ -151,35 +180,59 @@ fn subset_violation(parent: &GrantBody, child: &GrantBody) -> Option<&'static st
 /// Validates a grant and its whole chain at `now`. Returns the chain digests, leaf's parent
 /// first. Errors: `UNAUTHORIZED` (bad signature / unknown issuer), `CAPABILITY_EXPIRED`,
 /// `CAPABILITY_REVOKED`, `FORBIDDEN` (not rooted, scope or delegation violation).
-pub fn validate_grant(view: &dyn AuthorityView, now: Timestamp, grant: &SignedGrant) -> Result<Vec<Digest>, ProtocolError> {
+pub fn validate_grant(
+    view: &dyn AuthorityView,
+    now: Timestamp,
+    grant: &SignedGrant,
+) -> Result<Vec<Digest>, ProtocolError> {
     let mut chain = Vec::new();
     let mut current = grant.clone();
     for _ in 0..MAX_CHAIN {
         let g = &current.body;
         if g.namespace != view.namespace() {
-            return Err(err::forbidden(format!("grant {} belongs to another namespace", g.id)));
+            return Err(err::forbidden(format!(
+                "grant {} belongs to another namespace",
+                g.id
+            )));
         }
         verify_signature(view, &current)?;
         if view.is_revoked(&g.id) {
-            return Err(ProtocolError::new(ErrorCode::CapabilityRevoked, format!("grant {} is revoked", g.id)).with_object(g.id));
+            return Err(ProtocolError::new(
+                ErrorCode::CapabilityRevoked,
+                format!("grant {} is revoked", g.id),
+            )
+            .with_object(g.id));
         }
         if now >= g.expires_at {
-            return Err(ProtocolError::new(ErrorCode::CapabilityExpired, format!("grant {} expired", g.id)).with_object(g.id));
+            return Err(ProtocolError::new(
+                ErrorCode::CapabilityExpired,
+                format!("grant {} expired", g.id),
+            )
+            .with_object(g.id));
         }
         if now < g.not_before {
-            return Err(err::forbidden(format!("grant {} is not yet valid", g.id)).with_object(g.id));
+            return Err(
+                err::forbidden(format!("grant {} is not yet valid", g.id)).with_object(g.id)
+            );
         }
         let Some(parent_digest) = g.parent else {
             if view.roots().contains(&g.issuer) {
                 return Ok(chain);
             }
-            return Err(err::forbidden(format!("grant {} is not rooted: issuer is not a namespace root", g.id)).with_object(g.id));
+            return Err(err::forbidden(format!(
+                "grant {} is not rooted: issuer is not a namespace root",
+                g.id
+            ))
+            .with_object(g.id));
         };
         let parent = view
             .grant(&parent_digest)
             .ok_or_else(|| err::forbidden(format!("parent grant {parent_digest} is unknown")))?;
         if parent.body.subject != g.issuer {
-            return Err(err::forbidden(format!("grant {} issuer is not the subject of its parent", g.id)));
+            return Err(err::forbidden(format!(
+                "grant {} issuer is not the subject of its parent",
+                g.id
+            )));
         }
         if let Some(why) = subset_violation(&parent.body, g) {
             return Err(err::forbidden(format!("grant {}: {why}", g.id)).with_object(g.id));
@@ -191,9 +244,16 @@ pub fn validate_grant(view: &dyn AuthorityView, now: Timestamp, grant: &SignedGr
 }
 
 /// Default-deny authorization.
-pub fn authorize(view: &dyn AuthorityView, now: Timestamp, req: &Request<'_>) -> Result<Authorization, ProtocolError> {
+pub fn authorize(
+    view: &dyn AuthorityView,
+    now: Timestamp,
+    req: &Request<'_>,
+) -> Result<Authorization, ProtocolError> {
     if view.roots().contains(&req.principal) {
-        return Ok(Authorization { root: true, grants: vec![] });
+        return Ok(Authorization {
+            root: true,
+            grants: vec![],
+        });
     }
     let mut blocked: Option<ProtocolError> = None;
     for (digest, g) in view.grants_for_subject(&req.principal) {
@@ -204,7 +264,10 @@ pub fn authorize(view: &dyn AuthorityView, now: Timestamp, req: &Request<'_>) ->
             Ok(parents) => {
                 let mut grants = vec![digest];
                 grants.extend(parents);
-                return Ok(Authorization { root: false, grants });
+                return Ok(Authorization {
+                    root: false,
+                    grants,
+                });
             }
             Err(e) => {
                 // Prefer reporting revocation/expiry over generic denial.
@@ -220,40 +283,69 @@ pub fn authorize(view: &dyn AuthorityView, now: Timestamp, req: &Request<'_>) ->
         }
     }
     let base = match blocked {
-        Some(e) if matches!(e.code, ErrorCode::CapabilityRevoked | ErrorCode::CapabilityExpired) => e,
-        _ => err::forbidden(format!("no valid capability allows {} for {}", req.action, req.principal)),
+        Some(e)
+            if matches!(
+                e.code,
+                ErrorCode::CapabilityRevoked | ErrorCode::CapabilityExpired
+            ) =>
+        {
+            e
+        }
+        _ => err::forbidden(format!(
+            "no valid capability allows {} for {}",
+            req.action, req.principal
+        )),
     };
     Err(base.with_missing_action(req.action))
 }
 
 /// Resolves the effective principal of a request: the authenticated `caller`, or the ACTOR it
 /// acts as. Only key-bearing principals authenticate; an ACTOR must be linked to the caller.
-pub fn resolve_caller(view: &dyn AuthorityView, caller: PrincipalId, act_as: Option<PrincipalId>) -> Result<Principal, ProtocolError> {
+pub fn resolve_caller(
+    view: &dyn AuthorityView,
+    caller: PrincipalId,
+    act_as: Option<PrincipalId>,
+) -> Result<Principal, ProtocolError> {
     let p = view
         .principal(&caller)
         .ok_or_else(|| err::unauthorized(format!("unknown principal {caller}")))?;
     if p.kind == PrincipalKind::Actor || p.public_key.is_none() {
-        return Err(err::unauthorized("actors cannot authenticate directly; act through the linked key principal"));
+        return Err(err::unauthorized(
+            "actors cannot authenticate directly; act through the linked key principal",
+        ));
     }
     let Some(actor_id) = act_as else { return Ok(p) };
     let actor = view
         .principal(&actor_id)
         .ok_or_else(|| err::forbidden(format!("unknown actor {actor_id}")))?;
     if actor.kind != PrincipalKind::Actor || actor.linked_to != Some(caller) {
-        return Err(err::forbidden(format!("{caller} may not act as {actor_id}")));
+        return Err(err::forbidden(format!(
+            "{caller} may not act as {actor_id}"
+        )));
     }
     Ok(actor)
 }
 
 /// Replay/freshness window check for request envelopes (nonce uniqueness is enforced by the
 /// runtime store).
-pub fn check_freshness(now: Timestamp, issued_at: Timestamp, expires_at: Option<Timestamp>, window_ms: u64) -> Result<(), ProtocolError> {
+pub fn check_freshness(
+    now: Timestamp,
+    issued_at: Timestamp,
+    expires_at: Option<Timestamp>,
+    window_ms: u64,
+) -> Result<(), ProtocolError> {
     let skew = issued_at.millis_until(now).unsigned_abs();
     if skew > u128::from(window_ms) {
-        return Err(ProtocolError::new(ErrorCode::ReplayDetected, "request issued_at is outside the replay window"));
+        return Err(ProtocolError::new(
+            ErrorCode::ReplayDetected,
+            "request issued_at is outside the replay window",
+        ));
     }
     if expires_at.is_some_and(|e| e <= now) {
-        return Err(ProtocolError::new(ErrorCode::ReplayDetected, "request has expired"));
+        return Err(ProtocolError::new(
+            ErrorCode::ReplayDetected,
+            "request has expired",
+        ));
     }
     Ok(())
 }

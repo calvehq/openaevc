@@ -32,10 +32,16 @@ pub struct DigestParseError(pub String);
 
 impl Digest {
     /// All-zero SHA-256 value; the genesis `previous_event_hash` of a journal.
-    pub const ZERO: Digest = Digest { alg: DigestAlgorithm::Sha256, bytes: [0; 32] };
+    pub const ZERO: Digest = Digest {
+        alg: DigestAlgorithm::Sha256,
+        bytes: [0; 32],
+    };
 
     pub const fn sha256(bytes: [u8; 32]) -> Self {
-        Self { alg: DigestAlgorithm::Sha256, bytes }
+        Self {
+            alg: DigestAlgorithm::Sha256,
+            bytes,
+        }
     }
 
     pub fn algorithm(&self) -> DigestAlgorithm {
@@ -109,14 +115,23 @@ mod tests {
 
     #[test]
     fn rejects_uppercase_unknown_alg_and_bad_length() {
-        assert!(format!("sha256:{}", "AB".repeat(32)).parse::<Digest>().is_err());
-        assert!(format!("sha512:{}", "ab".repeat(32)).parse::<Digest>().is_err());
-        assert!(format!("sha256:{}", "ab".repeat(31)).parse::<Digest>().is_err());
+        assert!(format!("sha256:{}", "AB".repeat(32))
+            .parse::<Digest>()
+            .is_err());
+        assert!(format!("sha512:{}", "ab".repeat(32))
+            .parse::<Digest>()
+            .is_err());
+        assert!(format!("sha256:{}", "ab".repeat(31))
+            .parse::<Digest>()
+            .is_err());
         assert!("ab".parse::<Digest>().is_err());
     }
 
     #[test]
     fn zero_digest_is_genesis() {
-        assert_eq!(Digest::ZERO.to_string(), format!("sha256:{}", "0".repeat(64)));
+        assert_eq!(
+            Digest::ZERO.to_string(),
+            format!("sha256:{}", "0".repeat(64))
+        );
     }
 }
