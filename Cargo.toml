@@ -17,6 +17,8 @@ members = [
     "crates/openaevc-sdk",
     "crates/openaevc-testkit",
     "bins/openaevcd",
+    "bins/openaevc-inspect",
+    "examples",
     "extensions/reference-null",
     "extensions/reference-kv",
     "extensions/conformance-fixtures",

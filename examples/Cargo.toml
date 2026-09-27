@@ -1,0 +1,55 @@
+[package]
+name = "openaevc-examples"
+description = "Runnable OpenAEVC examples (embedded runtime, daemon client, custom extensions, flows)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "openaevc-example-counter-extension"
+path = "custom-extension-rust/main.rs"
+
+[[example]]
+name = "embedded-runtime"
+path = "embedded-runtime/main.rs"
+
+[[example]]
+name = "daemon-client"
+path = "daemon-client/main.rs"
+
+[[example]]
+name = "authority-flow"
+path = "authority-flow/main.rs"
+
+[[example]]
+name = "execute-verify-promote"
+path = "execute-verify-promote/main.rs"
+
+[[example]]
+name = "baseline-composition"
+path = "baseline-composition/main.rs"
+
+[dependencies]
+openaevc-protocol.workspace = true
+openaevc-core.workspace = true
+openaevc-crypto.workspace = true
+openaevc-store.workspace = true
+openaevc-runtime.workspace = true
+openaevc-sdk.workspace = true
+openaevc-transport.workspace = true
+openaevc-extension-contract.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[dev-dependencies]
+openaevc-testkit.workspace = true
+tempfile.workspace = true
