@@ -63,6 +63,11 @@ impl Identity {
         &self.key
     }
 
+    /// Shared signer handle (for SDK sessions).
+    pub fn signer(&self) -> Arc<SigningKey> {
+        self.key.clone()
+    }
+
     pub fn public_key(&self) -> PublicKey {
         self.key.public_key()
     }

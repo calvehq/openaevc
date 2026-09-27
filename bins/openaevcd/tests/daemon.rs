@@ -123,6 +123,8 @@ fn start(config: &Path) -> (Daemon, String) {
     }
     let mut err = String::new();
     let _ = std::io::Read::read_to_string(&mut child.stderr.take().unwrap(), &mut err);
+    let _ = child.kill();
+    let _ = child.wait();
     panic!("daemon did not start: {err}");
 }
 
