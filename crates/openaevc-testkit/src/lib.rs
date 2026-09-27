@@ -832,3 +832,83 @@ impl Harness {
             .expect("digest")
     }
 }
+
+impl Harness {
+    /// SQLite-backed harness that also returns the store (for fault injection) — the caller
+    /// keeps the runtime's clock at 2025-01-01.
+    pub fn sqlite_with_store(root: &Path, ext: Option<&Extensions>) -> (Self, Arc<SqliteStore>) {
+        let store =
+            Arc::new(SqliteStore::open(root, SqliteOptions::create()).expect("open sqlite store"));
+        let dirs = ext
+            .map(|e| vec![e.dir.path().to_path_buf()])
+            .unwrap_or_default();
+        let h = Self::build(store.clone(), FixedClock::new(EPOCH_2025), move |c| {
+            c.extension_dirs = dirs
+        });
+        (h, store)
+    }
+
+    /// Promotes a qualified pack; returns the PromotedPack digest.
+    pub fn promote(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+    ) -> Result<Digest, ProtocolError> {
+        let g = self.pack(who, ns, pack).generation;
+        self.client(who, ns)
+            .cmd(Command::PromoteChangePack {
+                pack,
+                generation: g,
+            })
+            .map(|r| r.result.digest.expect("promoted digest"))
+    }
+
+    /// Runs effects, seals, qualifies (no gates beyond Namespace policy) and promotes a new
+    /// ChangePack; returns `(pack, promoted digest)`.
+    pub fn promote_new(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        effects: Vec<EffectProposal>,
+    ) -> (PackId, Digest) {
+        self.promote_spec(who, ns, PackSpec::default(), effects)
+    }
+
+    pub fn promote_spec(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        spec: PackSpec,
+        effects: Vec<EffectProposal>,
+    ) -> (PackId, Digest) {
+        let pack: PackId = receipt_id(
+            &self
+                .client(who, ns)
+                .cmd(Command::CreateChangePack { spec })
+                .expect("create pack"),
+        );
+        self.finish_pack(who, ns, pack, effects)
+    }
+
+    /// Executes `effects` in `pack` (if any), seals, qualifies and promotes it.
+    pub fn finish_pack(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+        effects: Vec<EffectProposal>,
+    ) -> (PackId, Digest) {
+        if !effects.is_empty() {
+            self.run(who, ns, pack, &mut ScriptedHarness { effects });
+        }
+        self.seal(who, ns, pack);
+        let q = self.qualify(who, ns, pack);
+        assert_eq!(
+            q.result.state.as_deref(),
+            Some("QUALIFIED"),
+            "pack did not qualify"
+        );
+        (pack, self.promote(who, ns, pack).expect("promote"))
+    }
+}
