@@ -244,6 +244,24 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             digest,
             openaevc_protocol::ObjectKind::PolicyDecision,
         ),
+        GetPromotedPack { pack, digest } => {
+            let d = match (pack, digest) {
+                (_, Some(d)) => d,
+                (Some(pack), None) => {
+                    read(tx)?;
+                    let p: ChangePack = tx
+                        .peek(records::PACK, &records::key(&tx.ns, pack))?
+                        .ok_or_else(|| err::not_found(format!("pack {pack} not found")))?;
+                    p.promotion
+                        .ok_or_else(|| err::not_found(format!("pack {pack} is not promoted")))?
+                        .promoted_pack
+                }
+                (None, None) => {
+                    return Err(err::invalid("GetPromotedPack needs a pack or a digest"))
+                }
+            };
+            typed_object(tx, ctx, d, openaevc_protocol::ObjectKind::PromotedPack)
+        }
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()
