@@ -23,7 +23,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use openaevc_authority::{authorize, resolve_caller, Authorization, Request};
-use openaevc_core::request::{envelope_digest, verify_request};
+use openaevc_core::request::SignedRequest;
 use openaevc_core::{Clock, IdGenerator, IdGeneratorExt, ImmutableObject};
 use openaevc_crypto::Signer;
 use openaevc_protocol::{
@@ -242,7 +242,11 @@ impl Runtime {
 
     /// Authenticates a namespaced envelope: namespace exists, caller key signature, actor link,
     /// freshness window.
-    fn authenticate<T: Serialize>(&self, env: &Envelope<T>) -> Result<(NamespaceId, Ctx)> {
+    fn authenticate<T: Serialize + serde::de::DeserializeOwned>(
+        &self,
+        req: &SignedRequest<T>,
+    ) -> Result<(NamespaceId, Ctx)> {
+        let env = &req.envelope;
         let ns = env
             .namespace
             .ok_or_else(|| err::invalid("request envelope has no namespace"))?;
@@ -258,7 +262,7 @@ impl Runtime {
         let key = caller
             .public_key
             .ok_or_else(|| err::unauthorized("caller has no key"))?;
-        verify_request(env, &key)?;
+        req.verify(&key)?;
         let effective = resolve_caller(&view, env.caller, env.act_as)?;
         openaevc_authority::check_freshness(
             self.shared.clock.now(),
@@ -317,7 +321,13 @@ impl Runtime {
 
     /// Executes a signed command envelope.
     pub fn execute(&self, env: CommandEnvelope) -> Result<CommandReceipt> {
-        self.execute_inner(env, None)
+        self.execute_inner(SignedRequest::from_envelope(env)?, None)
+    }
+
+    /// Executes a signed command envelope received as a JSON-model value (transports). The
+    /// signature is verified over the canonical encoding of exactly this value.
+    pub fn execute_value(&self, v: Value) -> Result<CommandReceipt> {
+        self.execute_inner(SignedRequest::from_value(v)?, None)
     }
 
     /// Executes a `PutImmutableObject` whose signed envelope carries an empty `bytes` field and
@@ -328,8 +338,14 @@ impl Runtime {
         env: CommandEnvelope,
         payload: Vec<u8>,
     ) -> Result<CommandReceipt> {
-        match &env.body {
-            Command::PutImmutableObject { bytes, .. } if bytes.is_empty() => self.execute_inner(env, Some(payload)),
+        self.execute_with_payload_value(openaevc_canonical::to_value(&env)?, payload)
+    }
+
+    /// [`Runtime::execute_with_payload`] for an envelope received as a value.
+    pub fn execute_with_payload_value(&self, v: Value, payload: Vec<u8>) -> Result<CommandReceipt> {
+        let req = SignedRequest::<Command>::from_value(v)?;
+        match &req.envelope.body {
+            Command::PutImmutableObject { bytes, .. } if bytes.is_empty() => self.execute_inner(req, Some(payload)),
             _ => Err(err::invalid("a separate payload is only accepted for PutImmutableObject with empty inline bytes")),
         }
     }
@@ -341,11 +357,11 @@ impl Runtime {
 
     fn execute_inner(
         &self,
-        env: CommandEnvelope,
+        req: SignedRequest<Command>,
         payload: Option<Vec<u8>>,
     ) -> Result<CommandReceipt> {
-        let name = env.body.name();
-        let r = self.execute_locked(env, payload);
+        let name = req.envelope.body.name();
+        let r = self.execute_locked(req, payload);
         self.shared
             .metrics
             .command(name, r.as_ref().map_or_else(|e| e.code.as_str(), |_| "ok"));
@@ -354,17 +370,18 @@ impl Runtime {
 
     fn execute_locked(
         &self,
-        env: CommandEnvelope,
+        req: SignedRequest<Command>,
         payload: Option<Vec<u8>>,
     ) -> Result<CommandReceipt> {
         let _g = self.guard()?;
-        Self::check_version(&env)?;
-        let digest = envelope_digest(&env)?;
-        if let Command::CreateNamespace { .. } = env.body {
-            return self.execute_admin(env, digest);
+        Self::check_version(&req.envelope)?;
+        let digest = req.digest();
+        if let Command::CreateNamespace { .. } = req.envelope.body {
+            return self.execute_admin(req, digest);
         }
-        let (ns, ctx) = self.authenticate(&env)?;
-        if let Some(r) = self.check_replay(&env, digest)? {
+        let (ns, ctx) = self.authenticate(&req)?;
+        let env = &req.envelope;
+        if let Some(r) = self.check_replay(env, digest)? {
             return Ok(r);
         }
         recovery::expire_leases(&self.shared, ns)?;
@@ -379,7 +396,7 @@ impl Runtime {
             (body, _) => body,
         };
         match handlers::dispatch(&mut tx, &ctx, body) {
-            Ok(result) => self.commit(tx, &env, name, digest, result),
+            Ok(result) => self.commit(tx, env, name, digest, result),
             Err(e) => {
                 if is_authority_error(e.code) && self.shared.config.audit_denials {
                     self.record_denial(ns, &ctx, name, &e)?;
@@ -389,7 +406,8 @@ impl Runtime {
         }
     }
 
-    fn execute_admin(&self, env: CommandEnvelope, digest: Digest) -> Result<CommandReceipt> {
+    fn execute_admin(&self, req: SignedRequest<Command>, digest: Digest) -> Result<CommandReceipt> {
+        let env = &req.envelope;
         let admin = self
             .shared
             .config
@@ -399,7 +417,7 @@ impl Runtime {
             .ok_or_else(|| {
                 err::unauthorized("only runtime administrators may create namespaces")
             })?;
-        verify_request(&env, &admin.public_key)?;
+        req.verify(&admin.public_key)?;
         if env.act_as.is_some() {
             return Err(err::invalid("CreateNamespace cannot use act_as"));
         }
@@ -409,7 +427,7 @@ impl Runtime {
             env.expires_at,
             self.shared.config.replay_window_ms,
         )?;
-        if let Some(r) = self.check_replay(&env, digest)? {
+        if let Some(r) = self.check_replay(env, digest)? {
             return Ok(r);
         }
         let ns: NamespaceId = self.shared.ids.next();
@@ -423,7 +441,7 @@ impl Runtime {
             request_id: env.request_id,
         };
         let result = handlers::dispatch(&mut tx, &ctx, env.body.clone())?;
-        self.commit(tx, &env, "CreateNamespace", digest, result)
+        self.commit(tx, env, "CreateNamespace", digest, result)
     }
 
     fn commit(
@@ -526,12 +544,21 @@ impl Runtime {
 
     /// Executes a signed query envelope. Queries never mutate state.
     pub fn query(&self, env: QueryEnvelope) -> Result<Value> {
+        self.query_signed(SignedRequest::from_envelope(env)?)
+    }
+
+    /// Executes a signed query envelope received as a JSON-model value (transports).
+    pub fn query_value(&self, v: Value) -> Result<Value> {
+        self.query_signed(SignedRequest::from_value(v)?)
+    }
+
+    fn query_signed(&self, req: SignedRequest<Query>) -> Result<Value> {
         let _g = self.guard()?;
         self.shared.metrics.query();
-        Self::check_version(&env)?;
-        let (ns, ctx) = self.authenticate(&env)?;
+        Self::check_version(&req.envelope)?;
+        let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
-        let r = queries::dispatch(&tx, &ctx, env.body);
+        let r = queries::dispatch(&tx, &ctx, req.envelope.body);
         if let Err(e) = &r {
             if is_authority_error(e.code) && self.shared.config.audit_denials {
                 drop(tx);
@@ -545,14 +572,20 @@ impl Runtime {
     /// it is authenticated once, and `namespace.read` is re-authorized on every poll so
     /// revocation ends the subscription.
     pub fn subscribe(&self, env: QueryEnvelope, subjects: Vec<String>) -> Result<Subscription> {
+        self.subscribe_value(openaevc_canonical::to_value(&env)?, subjects)
+    }
+
+    /// [`Runtime::subscribe`] for an envelope received as a value.
+    pub fn subscribe_value(&self, v: Value, subjects: Vec<String>) -> Result<Subscription> {
+        let req = SignedRequest::<Query>::from_value(v)?;
         let _g = self.guard()?;
-        Self::check_version(&env)?;
-        let Query::ListEvents { after, kinds, .. } = env.body.clone() else {
+        Self::check_version(&req.envelope)?;
+        let Query::ListEvents { after, kinds, .. } = req.envelope.body.clone() else {
             return Err(err::invalid(
                 "subscriptions are opened with a ListEvents query envelope",
             ));
         };
-        let (ns, ctx) = self.authenticate(&env)?;
+        let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
         authz(&tx, &ctx, "namespace.read", None)?;
         Ok(Subscription {
@@ -612,9 +645,15 @@ impl Runtime {
     /// Loads a Namespace-visible object after authorizing `object.read` for the envelope's
     /// caller (used by transport object endpoints).
     pub fn read_object(&self, env: QueryEnvelope, digest: &Digest) -> Result<ImmutableObject> {
+        self.read_object_value(openaevc_canonical::to_value(&env)?, digest)
+    }
+
+    /// [`Runtime::read_object`] for an envelope received as a value.
+    pub fn read_object_value(&self, v: Value, digest: &Digest) -> Result<ImmutableObject> {
+        let req = SignedRequest::<Query>::from_value(v)?;
         let _g = self.guard()?;
-        Self::check_version(&env)?;
-        let (ns, ctx) = self.authenticate(&env)?;
+        Self::check_version(&req.envelope)?;
+        let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
         authz(&tx, &ctx, "object.read", None)?;
         tx.load_object(digest)?

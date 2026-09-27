@@ -455,7 +455,17 @@ name = "generate-schemas"
 version = "0.1.0"
 dependencies = [
  "openaevc-protocol",
+ "openaevc-transport",
  "schemars",
+ "serde_json",
+]
+
+[[package]]
+name = "generate-sdks"
+version = "0.1.0"
+dependencies = [
+ "generate-schemas",
+ "openaevc-protocol",
  "serde_json",
 ]
 
@@ -1017,7 +1027,9 @@ dependencies = [
  "openaevc-crypto",
  "openaevc-protocol",
  "openaevc-runtime",
+ "openaevc-sdk",
  "openaevc-store",
+ "openaevc-testkit",
  "openaevc-transport",
  "rustls",
  "rustls-pki-types",

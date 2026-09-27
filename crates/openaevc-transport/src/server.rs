@@ -154,26 +154,23 @@ fn to_value<T: Serialize>(v: &T) -> Result<Value, ProtocolError> {
     serde_json::to_value(v).map_err(|e| err::internal(format!("encode: {e}")))
 }
 
-/// Strictly decodes a signed envelope from a JSON or canonical-CBOR body.
-fn decode_body<T: Serialize + DeserializeOwned>(
-    headers: &HeaderMap,
-    body: &[u8],
-) -> Result<Envelope<T>, ProtocolError> {
-    let value: Value = if is_cbor(headers) {
-        openaevc_canonical::decode(body)?
+/// Decodes a request body (JSON or canonical CBOR) into the JSON-model value that was signed.
+/// The runtime verifies the signature over exactly this value and parses it strictly.
+fn decode_body(headers: &HeaderMap, body: &[u8]) -> Result<Value, ProtocolError> {
+    if is_cbor(headers) {
+        Ok(openaevc_canonical::decode(body)?)
     } else {
         serde_json::from_slice(body)
-            .map_err(|e| err::invalid(format!("request body is not JSON: {e}")))?
-    };
-    openaevc_canonical::from_value(value)
-        .map_err(|e| err::invalid(format!("request envelope is invalid or non-canonical: {e}")))
+            .map_err(|e| err::invalid(format!("request body is not JSON: {e}")))
+    }
 }
 
-/// Decodes an envelope from the `openaevc-envelope` header (or `envelope` query parameter).
+/// Decodes the envelope carried in the `openaevc-envelope` header (or `envelope` query
+/// parameter): the value that was signed plus its parsed form for endpoint shape checks.
 fn decode_header<T: Serialize + DeserializeOwned>(
     headers: &HeaderMap,
     query: Option<&str>,
-) -> Result<Envelope<T>, ProtocolError> {
+) -> Result<(Value, Envelope<T>), ProtocolError> {
     let from_query = query.and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("envelope=")));
     let raw = headers
         .get(ENVELOPE_HEADER)
@@ -181,7 +178,10 @@ fn decode_header<T: Serialize + DeserializeOwned>(
         .or(from_query)
         .ok_or_else(|| ProtocolError::new(ErrorCode::Unauthorized, "missing signed envelope"))?;
     let bytes = b64::decode(raw).map_err(|_| err::invalid("envelope header is not base64url"))?;
-    Ok(openaevc_canonical::from_canonical(&bytes)?)
+    let value = openaevc_canonical::decode(&bytes)?;
+    let env = serde_json::from_value(value.clone())
+        .map_err(|e| err::invalid(format!("invalid request envelope: {e}")))?;
+    Ok((value, env))
 }
 
 fn body_or_error(body: Result<Bytes, BytesRejection>) -> Result<Bytes, ProtocolError> {
@@ -220,8 +220,8 @@ async fn commands(
 ) -> Reply {
     let cbor = wants_cbor(&headers);
     let r = async {
-        let env: CommandEnvelope = decode_body(&headers, &body_or_error(body)?)?;
-        let receipt = blocking(&s, move |rt| rt.execute(env)).await?;
+        let env = decode_body(&headers, &body_or_error(body)?)?;
+        let receipt = blocking(&s, move |rt| rt.execute_value(env)).await?;
         to_value(&receipt)
     }
     .await;
@@ -238,8 +238,8 @@ async fn queries(
 ) -> Reply {
     let cbor = wants_cbor(&headers);
     let r = async {
-        let env: QueryEnvelope = decode_body(&headers, &body_or_error(body)?)?;
-        blocking(&s, move |rt| rt.query(env)).await
+        let env = decode_body(&headers, &body_or_error(body)?)?;
+        blocking(&s, move |rt| rt.query_value(env)).await
     }
     .await;
     match r {
@@ -260,13 +260,13 @@ async fn get_object(
 ) -> Reply {
     let r = async {
         let digest = path_digest(&d)?;
-        let env: QueryEnvelope = decode_header(&headers, q.as_deref())?;
+        let (value, env): (Value, QueryEnvelope) = decode_header(&headers, q.as_deref())?;
         if !matches!(env.body, Query::GetObject { digest: x } if x == digest) {
             return Err(err::invalid(
                 "the signed envelope must be GetObject for this digest",
             ));
         }
-        let obj = blocking(&s, move |rt| rt.read_object(env, &digest)).await?;
+        let obj = blocking(&s, move |rt| rt.read_object_value(value, &digest)).await?;
         Ok(obj.bytes().to_vec())
     }
     .await;
@@ -284,12 +284,12 @@ async fn put_object(
 ) -> Reply {
     let r = async {
         let digest = path_digest(&d)?;
-        let env: CommandEnvelope = decode_header(&headers, None)?;
+        let (value, env): (Value, CommandEnvelope) = decode_header(&headers, None)?;
         if !matches!(&env.body, Command::PutImmutableObject { digest: x, bytes } if *x == digest && bytes.is_empty()) {
             return Err(err::invalid("the signed envelope must be PutImmutableObject for this digest with empty inline bytes"));
         }
         let payload = body_or_error(body)?.to_vec();
-        let receipt = blocking(&s, move |rt| rt.execute_with_payload(env, payload)).await?;
+        let receipt = blocking(&s, move |rt| rt.execute_with_payload_value(value, payload)).await?;
         to_value(&receipt)
     }
     .await;
@@ -308,7 +308,7 @@ fn sse_event(e: &openaevc_protocol::Event) -> SseEvent {
 
 async fn events(State(s): State<AppState>, RawQuery(q): RawQuery, headers: HeaderMap) -> Response {
     let setup = async {
-        let env: QueryEnvelope = decode_header(&headers, q.as_deref())?;
+        let (env, _): (Value, QueryEnvelope) = decode_header(&headers, q.as_deref())?;
         let subjects: Vec<String> = q
             .as_deref()
             .unwrap_or_default()
@@ -321,7 +321,7 @@ async fn events(State(s): State<AppState>, RawQuery(q): RawQuery, headers: Heade
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse().ok());
         blocking(&s, move |rt| {
-            let mut sub = rt.subscribe(env, subjects)?;
+            let mut sub = rt.subscribe_value(env, subjects)?;
             if let Some(r) = resume {
                 sub.set_cursor(r.max(sub.cursor()));
             }

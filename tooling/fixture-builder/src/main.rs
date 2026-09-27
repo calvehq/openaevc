@@ -114,7 +114,7 @@ fn values() -> Value {
     ]);
     let invalid_json = json!([
         {"name": "float", "json": 1.5},
-        {"name": "integral_float", "json": 2.0},
+        {"name": "integral_float", "json": 2.0, "requires_float_distinction": true},
         {"name": "null_value", "json": {"a": null}},
         {"name": "uint_above_safe", "json": 9007199254740992u64},
         {"name": "nint_below_safe", "json": -9007199254740992i64},

@@ -42,6 +42,58 @@ pub fn verify_request<T: Serialize>(
 pub fn envelope_digest<T: Serialize>(env: &Envelope<T>) -> Result<Digest, ProtocolError> {
     openaevc_crypto::digest_of(env)
 }
+/// A request envelope together with the exact bytes its signature covers.
+///
+/// Envelopes are verified over the canonical encoding of the envelope value as received (minus
+/// `signature`). Parsing is strict (unknown fields rejected), but optional empty fields need not
+/// be omitted, so every SDK can sign what it sends without knowing field optionality.
+#[derive(Debug, Clone)]
+pub struct SignedRequest<T> {
+    pub envelope: Envelope<T>,
+    signing_bytes: Vec<u8>,
+    digest: Digest,
+}
+
+impl<T: Serialize + serde::de::DeserializeOwned> SignedRequest<T> {
+    /// From a typed envelope (embedded callers).
+    pub fn from_envelope(env: Envelope<T>) -> Result<Self, ProtocolError> {
+        let v = openaevc_canonical::to_value(&env)?;
+        Self::from_value(v)
+    }
+
+    /// From a received JSON-model value (transport callers).
+    pub fn from_value(v: serde_json::Value) -> Result<Self, ProtocolError> {
+        let digest = openaevc_crypto::sha256(&openaevc_canonical::encode(&v)?);
+        let mut unsigned = v.clone();
+        if let Some(m) = unsigned.as_object_mut() {
+            m.remove("signature");
+        }
+        let signing_bytes = openaevc_canonical::encode(&unsigned)?;
+        let envelope: Envelope<T> = serde_json::from_value(v)
+            .map_err(|e| err::invalid(format!("invalid request envelope: {e}")))?;
+        Ok(SignedRequest {
+            envelope,
+            signing_bytes,
+            digest,
+        })
+    }
+
+    /// Verifies the signature with `key` (`UNAUTHORIZED` when missing or invalid).
+    pub fn verify(&self, key: &PublicKey) -> Result<(), ProtocolError> {
+        let sig = self
+            .envelope
+            .signature
+            .as_ref()
+            .ok_or_else(|| err::unauthorized("request is not signed"))?;
+        openaevc_crypto::verify(key, Domain::Request, &self.signing_bytes, sig)
+    }
+
+    /// Digest of the envelope as received (idempotency, receipts).
+    pub fn digest(&self) -> Digest {
+        self.digest
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,6 +134,35 @@ mod tests {
         assert_eq!(
             verify_request(&env(), &k.public_key()).unwrap_err().code,
             ErrorCode::Unauthorized
+        );
+    }
+
+    #[test]
+    fn signed_request_accepts_non_minimal_but_valid_encodings() {
+        let k = SigningKey::generate();
+        // A client that sends an explicit empty optional field signs exactly what it sends.
+        let mut v = serde_json::to_value(env()).unwrap();
+        v["body"] = serde_json::json!({"type": "ListEvents", "after": 0, "kinds": []});
+        v.as_object_mut().unwrap().remove("signature");
+        let sig = k.sign(
+            openaevc_crypto::Domain::Request,
+            &openaevc_canonical::encode(&v).unwrap(),
+        );
+        v["signature"] = serde_json::json!(sig.to_string());
+        let r = SignedRequest::<Query>::from_value(v.clone()).unwrap();
+        r.verify(&k.public_key()).unwrap();
+        // Tampering is still detected; unknown fields are still rejected.
+        let mut t = v.clone();
+        t["nonce"] = serde_json::json!("b3RoZXI");
+        assert!(SignedRequest::<Query>::from_value(t)
+            .unwrap()
+            .verify(&k.public_key())
+            .is_err());
+        let mut u = v;
+        u["extra"] = serde_json::json!(1);
+        assert_eq!(
+            SignedRequest::<Query>::from_value(u).unwrap_err().code,
+            ErrorCode::InvalidArgument
         );
     }
 

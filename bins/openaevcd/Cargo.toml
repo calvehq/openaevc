@@ -30,3 +30,6 @@ tokio-rustls.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+openaevc-testkit.workspace = true
+openaevc-sdk.workspace = true
+openaevc-transport.workspace = true

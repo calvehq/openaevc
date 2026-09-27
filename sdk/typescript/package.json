@@ -1,0 +1,22 @@
+{
+  "name": "@openaevc/sdk",
+  "version": "0.1.0",
+  "description": "OpenAEVC TypeScript client SDK (protocol 0.1.0)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": { "node": ">=22.6" },
+  "exports": { ".": "./dist/index.js" },
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "src"],
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "e2e": "node --experimental-strip-types test/e2e.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.8.0"
+  },
+  "openaevc": { "protocol": "0.1.0", "contract": "0.1.0" }
+}
