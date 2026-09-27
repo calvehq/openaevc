@@ -279,6 +279,11 @@ impl Harness {
         id
     }
 
+    /// A fresh typed ID from the harness generator.
+    pub fn ids_next<T: openaevc_core::FromUuid>(&self) -> T {
+        self.ids.next()
+    }
+
     /// All journal events of `ns` as JSON (read as `who`).
     pub fn events(&self, who: &Identity, ns: NamespaceId) -> Vec<Value> {
         let v = self
