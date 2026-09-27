@@ -1,0 +1,721 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAEVC daemon transport",
+    "version": "0.1.0",
+    "description": "One authoritative semantic surface: signed command/query envelopes, object exchange and journal events. Authorization is decided by the runtime for every request.",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    }
+  },
+  "paths": {
+    "/v1/info": {
+      "get": {
+        "operationId": "getInfo",
+        "summary": "Runtime and supported protocol/contract ranges (unauthenticated)",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/RuntimeInfo"
+                }
+              },
+              "application/cbor": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/RuntimeInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/commands": {
+      "post": {
+        "operationId": "executeCommand",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandEnvelope"
+              }
+            },
+            "application/cbor": {
+              "schema": {
+                "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandReceipt"
+                }
+              },
+              "application/cbor": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/queries": {
+      "post": {
+        "operationId": "executeQuery",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/QueryEnvelope"
+              }
+            },
+            "application/cbor": {
+              "schema": {
+                "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/QueryEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Query result (shape depends on the query)",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "operationId": "streamEvents",
+        "summary": "Server-sent journal events for a signed ListEvents envelope; resume with Last-Event-ID",
+        "parameters": [
+          {
+            "name": "openaevc-envelope",
+            "in": "header",
+            "required": true,
+            "description": "Unpadded base64url of the canonical CBOR of a signed envelope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "text/event-stream of Event JSON",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/Event"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/objects/{digest}": {
+      "get": {
+        "operationId": "getObject",
+        "parameters": [
+          {
+            "name": "digest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/Digest"
+            }
+          },
+          {
+            "name": "openaevc-envelope",
+            "in": "header",
+            "required": true,
+            "description": "Unpadded base64url of the canonical CBOR of a signed envelope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Canonical CBOR bytes",
+            "content": {
+              "application/cbor": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putObject",
+        "parameters": [
+          {
+            "name": "digest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/Digest"
+            }
+          },
+          {
+            "name": "openaevc-envelope",
+            "in": "header",
+            "required": true,
+            "description": "Unpadded base64url of the canonical CBOR of a signed envelope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/cbor": {}
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured protocol error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/ProtocolError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandReceipt"
+                }
+              },
+              "application/cbor": {
+                "schema": {
+                  "$ref": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json#/$defs/CommandReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi",
+        "responses": {
+          "200": {
+            "description": "This document"
+          }
+        }
+      }
+    },
+    "/v1/health/live": {
+      "get": {
+        "operationId": "live",
+        "responses": {
+          "200": {
+            "description": "Process is alive"
+          }
+        }
+      }
+    },
+    "/v1/health/ready": {
+      "get": {
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "description": "Ready"
+          },
+          "503": {
+            "description": "Not ready"
+          }
+        }
+      }
+    },
+    "/v1/metrics": {
+      "get": {
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition",
+            "content": {
+              "text/plain": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

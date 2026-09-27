@@ -22,6 +22,7 @@ members = [
     "extensions/conformance-fixtures",
     "tooling/generate-schemas",
     "tooling/fixture-builder",
+    "tooling/generate-sdks",
 ]
 
 [workspace.package]

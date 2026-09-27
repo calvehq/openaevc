@@ -248,7 +248,8 @@
     },
     {
       "name": "integral_float",
-      "json": 2.0
+      "json": 2.0,
+      "requires_float_distinction": true
     },
     {
       "name": "null_value",

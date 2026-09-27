@@ -13,8 +13,11 @@ caller's key over the canonical encoding of the envelope with `signature` omitte
 **AEVC-TRN-0001** Implementations MUST authenticate and authorize every envelope identically
 regardless of transport; the daemon MUST NOT make authorization decisions of its own.
 
-**AEVC-TRN-0002** Envelopes MUST be in canonical form: absent and empty optional fields omitted.
-Envelopes that decode but do not re-encode identically are rejected (`INVALID_ARGUMENT`).
+**AEVC-TRN-0002** The signature covers the canonical CBOR encoding of the envelope value exactly
+as transmitted (with `signature` removed); implementations MUST verify over that value, not over
+a re-serialization. Envelopes are parsed strictly: unknown fields, `null`, floats and malformed
+values are rejected (`INVALID_ARGUMENT` / `CANONICAL_ENCODING_ERROR`). Optional fields may be sent
+empty or omitted; the envelope digest (idempotency) is of the value as received.
 
 ## HTTP v1
 

@@ -12,4 +12,5 @@ workspace = true
 [dependencies]
 openaevc-protocol.workspace = true
 schemars.workspace = true
+openaevc-transport.workspace = true
 serde_json.workspace = true
