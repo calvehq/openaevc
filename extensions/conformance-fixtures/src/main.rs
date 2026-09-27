@@ -120,7 +120,7 @@ impl Extension for Fixture {
                 .map_err(|e| WireError::new("encode", e.to_string()))
             }
             _ => match op {
-                Operation::Verify { .. } => pass(),
+                Operation::Verify { kind, .. } if kind == self.kind("check") => pass(),
                 other => Err(WireError::new("unsupported", other.name())),
             },
         }

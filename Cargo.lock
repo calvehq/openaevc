@@ -810,6 +810,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-conformance"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "openaevc-authority",
+ "openaevc-canonical",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-extension-contract",
+ "openaevc-protocol",
+ "openaevc-runtime",
+ "openaevc-sdk",
+ "openaevc-store",
+ "openaevc-testkit",
+ "openaevc-transport",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "openaevc-conformance-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "openaevc-conformance",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "openaevc-transport",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "openaevc-core"
 version = "0.1.0"
 dependencies = [

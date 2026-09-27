@@ -1,0 +1,24 @@
+[package]
+name = "openaevc-conformance-cli"
+description = "Runs the OpenAEVC conformance suite against a runtime, a daemon or an extension."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "openaevc-conformance"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+openaevc-conformance.workspace = true
+openaevc-crypto.workspace = true
+openaevc-protocol.workspace = true
+openaevc-transport.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

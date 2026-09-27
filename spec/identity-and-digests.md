@@ -42,8 +42,8 @@ Public keys are Ed25519, written `ed25519:<unpadded base64url of 32 bytes>`; sig
 
 Timestamps are RFC 3339 UTC with a `Z` suffix and 0–9 fraction digits; the canonical output form has exactly nine fraction digits. Offsets other than `Z` and dates before 1970 are invalid.
 
-**AEVC-ID-0008** Timestamps inside canonical or signed values (objects and request envelopes) MUST
-use the canonical nine-fraction-digit form; other spellings do not re-encode identically and are
-rejected.
+**AEVC-ID-0008** Timestamps inside immutable objects MUST use the canonical nine-fraction-digit
+form; objects with other spellings do not re-encode identically and are rejected. (Request
+envelopes are verified over the value as transmitted, transport.md.)
 
 **AEVC-ID-0007** Timestamps MUST NOT be the sole ordering authority. Per-Namespace event sequence numbers (events.md) are authoritative.

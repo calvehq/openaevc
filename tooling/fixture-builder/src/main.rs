@@ -545,6 +545,14 @@ fn objects(cx: &Ctx) -> Value {
     future["protocol_version"] = json!("9.0.0");
     let mut unknown_kind = serde_json::to_value(&blob_env).unwrap();
     unknown_kind["kind"] = json!("branch");
+    let mut short_ts = serde_json::to_value(&blob_env).unwrap();
+    short_ts["kind"] = json!("revocation");
+    short_ts["body"] = json!({
+        "grant": "grt_agjdus24nvyadaareizuivlgo4",
+        "grant_digest": format!("sha256:{}", "1".repeat(64)),
+        "revoked_by": cx.pri,
+        "revoked_at": "2024-05-01T12:00:00.123Z"
+    });
     let mut forged = sign_envelope(blob_env.clone(), &cx.runtime_key).unwrap();
     forged.created_seq = 99;
     let invalid = json!([
@@ -552,6 +560,7 @@ fn objects(cx: &Ctx) -> Value {
         {"name": "unknown_envelope_field", "cbor_hex": raw(unknown), "error": "CANONICAL_ENCODING_ERROR"},
         {"name": "unknown_body_field", "cbor_hex": raw(body_extra), "error": "INVALID_ARGUMENT"},
         {"name": "body_does_not_match_kind", "cbor_hex": raw(wrong_kind), "error": "INVALID_ARGUMENT"},
+        {"name": "non_canonical_timestamp", "cbor_hex": raw(short_ts), "error": "INVALID_ARGUMENT"},
         {"name": "unsupported_protocol_version", "cbor_hex": raw(future), "error": "PROTOCOL_VERSION_UNSUPPORTED"},
         {"name": "unknown_object_kind", "cbor_hex": raw(unknown_kind), "error": "CANONICAL_ENCODING_ERROR"},
         {"name": "forged_signature", "cbor_hex": raw(serde_json::to_value(&forged).unwrap()), "error": "UNAUTHORIZED"},
@@ -742,7 +751,7 @@ fn authority(cx: &Ctx) -> Value {
             {"name": "delegation_widening", "principal": bob, "action": "baseline.create", "expect": "FORBIDDEN", "chain": []},
             {"name": "default_deny", "principal": bob, "action": "changepack.promote", "expect": "FORBIDDEN", "chain": []},
             {"name": "expired", "principal": carol, "action": "changepack.seal", "expect": "CAPABILITY_EXPIRED", "chain": []},
-            {"name": "forged_signature", "principal": carol, "action": "changepack.create", "expect": "FORBIDDEN", "chain": []},
+        {"name": "forged_signature", "principal": carol, "action": "changepack.create", "expect": "FORBIDDEN", "chain": []},
             {"name": "revoked_parent", "principal": bob, "action": "changepack.create", "resource": res("app/2"), "revoked": [g_alice.body.id], "expect": "CAPABILITY_REVOKED", "chain": []},
         ],
     })

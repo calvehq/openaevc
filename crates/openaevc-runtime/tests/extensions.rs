@@ -271,15 +271,20 @@ fn oversized_and_invalid_frames_fail_closed() {
 #[test]
 fn deadline_is_enforced() {
     let ext = Extensions::install();
+    // Handshake first so only the invocation is timed (machine load must not flake the bound).
+    let (ep, manifest) = fixture(&ext, "slow");
+    let limits = HostLimits {
+        deadline: Duration::from_millis(400),
+        ..Default::default()
+    };
     let start = Instant::now();
-    let e = run(
-        &ext,
-        "slow",
-        HostLimits {
-            deadline: Duration::from_millis(400),
-            ..Default::default()
-        },
+    let e = host::invoke(
+        &ep,
+        &limits,
+        &manifest,
+        verify_op("slow"),
         vec![],
+        &mut NoScope,
     )
     .unwrap_err();
     assert_eq!(e, HostError::Deadline);

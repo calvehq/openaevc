@@ -232,6 +232,36 @@ impl HttpClient {
         self.post("/v1/queries", env).await
     }
 
+    /// Posts an already-signed command envelope value as-is (conformance and diagnostics).
+    pub async fn command_value(&self, env: &Value) -> Result<CommandReceipt, ProtocolError> {
+        self.post("/v1/commands", env).await
+    }
+
+    /// Posts an already-signed query envelope value as-is.
+    pub async fn query_value(&self, env: &Value) -> Result<Value, ProtocolError> {
+        self.post("/v1/queries", env).await
+    }
+
+    /// `PUT /v1/objects/{digest}` with an already-signed envelope value.
+    pub async fn put_object_value(
+        &self,
+        env: &Value,
+        digest: Digest,
+        bytes: Vec<u8>,
+    ) -> Result<CommandReceipt, ProtocolError> {
+        let req = self
+            .request("PUT", &format!("/v1/objects/{digest}"))
+            .header(
+                ENVELOPE_HEADER,
+                b64::encode(&openaevc_canonical::encode(env)?),
+            )
+            .header("content-type", CBOR)
+            .body(Full::new(Bytes::from(bytes)))
+            .map_err(|e| transport_error(e.to_string()))?;
+        let (_, body, cbor) = Self::read(self.send(req).await?).await?;
+        Self::decode(&body, cbor)
+    }
+
     /// `GET /v1/objects/{digest}` with a signed `GetObject` envelope; returns canonical bytes.
     pub async fn get_object(
         &self,
