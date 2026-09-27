@@ -52,5 +52,18 @@ class TextRules(unittest.TestCase):
         self.assertEqual(check.text_violations(src, "x.rs"), [])
 
 
+
+class Coverage(unittest.TestCase):
+    def test_unmapped_and_unknown_ids_fail(self):
+        import coverage
+        self.assertEqual(coverage.problems({"AEVC-A-0001"}, {"AEVC-A-0001"}), [])
+        self.assertTrue(coverage.problems({"AEVC-A-0001", "AEVC-A-0002"}, {"AEVC-A-0001"}))
+        self.assertTrue(coverage.problems({"AEVC-A-0001"}, {"AEVC-A-0001", "AEVC-B-0001"}))
+
+    def test_repository_is_fully_covered(self):
+        import coverage
+        self.assertEqual(coverage.main(), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

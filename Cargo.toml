@@ -15,9 +15,11 @@ members = [
     "crates/openaevc-runtime",
     "crates/openaevc-transport",
     "crates/openaevc-sdk",
+    "crates/openaevc-conformance",
     "crates/openaevc-testkit",
     "bins/openaevcd",
     "bins/openaevc-inspect",
+    "bins/openaevc-conformance",
     "examples",
     "extensions/reference-null",
     "extensions/reference-kv",
@@ -64,6 +66,7 @@ openaevc-composition = { path = "crates/openaevc-composition", version = "0.1.0"
 openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
 openaevc-transport = { path = "crates/openaevc-transport", version = "0.1.0" }
 openaevc-sdk = { path = "crates/openaevc-sdk", version = "0.1.0" }
+openaevc-conformance = { path = "crates/openaevc-conformance", version = "0.1.0" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
 schemars = "1"
