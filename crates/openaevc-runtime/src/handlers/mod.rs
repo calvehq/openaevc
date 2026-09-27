@@ -3,6 +3,7 @@
 
 pub(crate) mod baseline;
 pub(crate) mod evidence;
+mod exchange;
 mod execution;
 mod extensions;
 mod graph;
@@ -202,9 +203,6 @@ pub(crate) fn dispatch(tx: &mut Tx<'_>, ctx: &Ctx, cmd: Command) -> Result<Comma
             policies,
             metadata,
         } => baseline::create(tx, ctx, members, e, policies, metadata),
-        other => Err(openaevc_protocol::err::invalid(format!(
-            "{} is not supported by this runtime build",
-            other.name()
-        ))),
+        PutImmutableObject { digest, bytes } => exchange::put(tx, ctx, digest, bytes),
     }
 }

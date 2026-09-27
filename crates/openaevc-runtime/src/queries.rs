@@ -271,10 +271,47 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             authz(tx, ctx, "object.read", None)?;
             handlers::baseline::validate(tx, digest)
         }
-        other => Err(err::invalid(format!(
-            "{} is not supported by this runtime build",
-            other.name()
-        ))),
+        GetObjectClosure { digest } => {
+            object_read(tx)?;
+            closure_json(tx, digest)
+        }
+        GetPackClosure { digest } => {
+            object_read(tx)?;
+            let _: (_, openaevc_protocol::PromotedPack) =
+                tx.require_object(&digest, openaevc_protocol::ObjectKind::PromotedPack)?;
+            closure_json(tx, digest)
+        }
+        GetBaselineClosure { baseline } => {
+            object_read(tx)?;
+            let d = handlers::baseline::digest_of_id(tx, baseline)?;
+            closure_json(tx, d)
+        }
+        ComputeMissingObjects { digests } => {
+            object_read(tx)?;
+            let mut missing = Vec::new();
+            for d in digests {
+                if !tx.rt.store.is_indexed(&tx.ns, &d)? && !missing.contains(&d) {
+                    missing.push(d);
+                }
+            }
+            missing.sort();
+            to_json(&missing)
+        }
+        ListObjectDigests { kind, after, limit } => {
+            object_read(tx)?;
+            let limit = limit
+                .unwrap_or(tx.rt.config.max_page)
+                .min(tx.rt.config.max_page) as usize;
+            let page = tx.rt.store.list_index(&tx.ns, kind, after, limit)?;
+            let next = (page.len() == limit)
+                .then(|| page.last().map(|(d, _)| *d))
+                .flatten();
+            let objects: Vec<Value> = page
+                .iter()
+                .map(|(d, k)| json!({"digest": d, "kind": k}))
+                .collect();
+            Ok(json!({"objects": objects, "next": next}))
+        }
     }
 }
 
@@ -358,4 +395,23 @@ fn typed_object(
         );
     }
     object_json(&o)
+}
+
+/// Transitive closure of references from `root`; digests not visible here are listed as missing.
+fn closure_json(tx: &Tx<'_>, root: openaevc_protocol::Digest) -> Result<Value> {
+    use std::cell::RefCell;
+    let missing = RefCell::new(Vec::new());
+    let objects = openaevc_composition::closure(&[root], |d| match tx.load_object(d)? {
+        Some(o) => o.references(),
+        None => {
+            missing.borrow_mut().push(*d);
+            Ok(vec![])
+        }
+    })?;
+    let missing = missing.into_inner();
+    let present: Vec<_> = objects
+        .into_iter()
+        .filter(|d| !missing.contains(d))
+        .collect();
+    Ok(json!({"root": root, "objects": present, "missing": missing}))
 }

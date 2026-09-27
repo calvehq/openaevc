@@ -1,1 +1,3 @@
 msrv = "1.89"
+# Command handlers take one parameter per command field.
+too-many-arguments-threshold = 12

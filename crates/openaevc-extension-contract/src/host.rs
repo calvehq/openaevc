@@ -118,6 +118,8 @@ impl HostError {
     }
 }
 
+// Messages are short-lived; boxing the manifest-carrying variant buys nothing.
+#[allow(clippy::large_enum_variant)]
 enum Incoming {
     Msg(ExtensionMessage),
     Bad(String),
