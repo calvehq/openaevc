@@ -923,6 +923,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-sdk"
+version = "0.1.0"
+dependencies = [
+ "openaevc-authority",
+ "openaevc-canonical",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "openaevc-runtime",
+ "openaevc-testkit",
+ "openaevc-transport",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "openaevc-store"
 version = "0.1.0"
 dependencies = [
