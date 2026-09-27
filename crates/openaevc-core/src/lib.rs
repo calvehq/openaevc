@@ -3,6 +3,7 @@
 
 pub mod clock;
 pub mod events;
+pub mod graph;
 pub mod lifecycle;
 pub mod names;
 pub mod object;

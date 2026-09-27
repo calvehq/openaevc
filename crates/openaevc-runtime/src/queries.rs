@@ -5,6 +5,9 @@ use openaevc_core::ImmutableObject;
 use openaevc_protocol::{b64, err, JournalCheckpoint, Namespace, Principal, Query};
 use serde_json::{json, Value};
 
+use openaevc_protocol::{AnyId, ChangePack, NodeRef, PackId};
+
+use crate::handlers;
 use crate::records::{self, CheckpointRecord, GrantRecord};
 use crate::tx::Tx;
 use crate::view::NsView;
@@ -131,9 +134,129 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             let _: JournalCheckpoint = o.body()?;
             object_json(&o)
         }
+        GetChangePack { pack, generation } | GetRevisionPack { pack, generation } => {
+            read(tx)?;
+            let p: Option<ChangePack> = match generation {
+                Some(g) => tx.peek(
+                    records::PACK_GENERATION,
+                    &records::generation_key(&tx.ns, pack, g),
+                )?,
+                None => tx.peek(records::PACK, &records::key(&tx.ns, pack))?,
+            };
+            to_json(&p.ok_or_else(|| {
+                err::not_found(format!("pack {pack} not found")).with_object(pack)
+            })?)
+        }
+        GetActiveChangeGraph { pack } => {
+            read(tx)?;
+            graph_json(tx, pack)
+        }
+        GetNode { node } => {
+            read(tx)?;
+            node_json(tx, &node)
+        }
+        GetDependencyClosure { node, reverse } => {
+            read(tx)?;
+            let waits = handlers::wait_edges(&handlers::edges(tx)?);
+            to_json(&openaevc_core::graph::closure(&waits, &node, reverse))
+        }
+        GetAffectedNodes { node } => {
+            read(tx)?;
+            let waits = handlers::wait_edges(&handlers::edges(tx)?);
+            let mut out = openaevc_core::graph::closure(&waits, &node, true);
+            // Downstream of a pack also includes everything waiting on its work units.
+            if let Some(pack) = pack_of_node(&node) {
+                if let Some(p) =
+                    tx.peek::<ChangePack>(records::PACK, &records::key(&tx.ns, pack))?
+                {
+                    for w in &p.work_units {
+                        out.extend(openaevc_core::graph::closure(
+                            &waits,
+                            &NodeRef::from(w.id),
+                            true,
+                        ));
+                    }
+                }
+            }
+            out.sort();
+            out.dedup();
+            to_json(&out)
+        }
+        GetReadyWork { pack } => {
+            read(tx)?;
+            to_json(&handlers::work_status(tx, pack, true)?)
+        }
+        GetBlockedWork { pack } => {
+            read(tx)?;
+            to_json(&handlers::work_status(tx, pack, false)?)
+        }
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()
         ))),
     }
+}
+
+fn pack_of_node(n: &NodeRef) -> Option<PackId> {
+    match n {
+        NodeRef::Id(AnyId::ChangePackId(id)) => Some(PackId::Change(*id)),
+        NodeRef::Id(AnyId::RevisionPackId(id)) => Some(PackId::Revision(*id)),
+        _ => None,
+    }
+}
+
+fn pack_node(p: &ChangePack) -> Value {
+    json!({"node": p.id, "type": "pack", "state": p.state, "generation": p.generation})
+}
+
+fn graph_json(tx: &Tx<'_>, only: Option<PackId>) -> Result<Value> {
+    let packs = handlers::all_packs(tx)?;
+    let mut nodes = Vec::new();
+    let mut members: Vec<String> = Vec::new();
+    for p in packs.values().filter(|p| only.is_none_or(|o| o == p.id)) {
+        nodes.push(pack_node(p));
+        members.push(p.id.to_string());
+        for w in &p.work_units {
+            nodes.push(json!({"node": w.id, "type": "work_unit", "pack": p.id, "state": w.state, "kind": w.kind}));
+            members.push(w.id.to_string());
+        }
+    }
+    let edges: Vec<_> = handlers::edges(tx)?
+        .into_iter()
+        .filter(|e| {
+            only.is_none()
+                || members.contains(&e.from.to_string())
+                || members.contains(&e.to.to_string())
+        })
+        .collect();
+    Ok(json!({"nodes": nodes, "edges": to_json(&edges)?}))
+}
+
+fn node_json(tx: &Tx<'_>, n: &NodeRef) -> Result<Value> {
+    let missing = || err::not_found(format!("node {n} not found")).with_object(n);
+    if let Some(pack) = pack_of_node(n) {
+        let p: ChangePack = tx
+            .peek(records::PACK, &records::key(&tx.ns, pack))?
+            .ok_or_else(missing)?;
+        return Ok(pack_node(&p));
+    }
+    if let NodeRef::Id(AnyId::WorkUnitId(w)) = n {
+        let pack = handlers::owner(tx, n)?.ok_or_else(missing)?;
+        let p: ChangePack = tx
+            .peek(records::PACK, &records::key(&tx.ns, pack))?
+            .ok_or_else(missing)?;
+        let unit = p
+            .work_units
+            .iter()
+            .find(|u| &u.id == w)
+            .ok_or_else(missing)?;
+        return Ok(
+            json!({"node": w, "type": "work_unit", "pack": pack, "state": unit.state, "kind": unit.kind, "spec": unit.spec}),
+        );
+    }
+    if let NodeRef::Digest(d) = n {
+        let o = tx.load_object(d)?.ok_or_else(missing)?;
+        return Ok(json!({"node": d, "type": o.kind()}));
+    }
+    Err(missing())
 }

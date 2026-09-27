@@ -154,33 +154,6 @@ impl<'a> Tx<'a> {
             .ok_or_else(|| err::not_found(format!("{what} not found")))
     }
 
-    /// All aggregates of `kind` whose key starts with `prefix` (overlay applied).
-    pub fn list<T: DeserializeOwned>(
-        &mut self,
-        kind: &str,
-        prefix: &str,
-    ) -> Result<Vec<(String, T)>, ProtocolError> {
-        let mut map: BTreeMap<String, Value> = self
-            .rt
-            .store
-            .list_aggregates(kind, prefix)?
-            .into_iter()
-            .map(|(k, r)| (k, r.body))
-            .collect();
-        for ((wk, key), v) in &self.writes {
-            if wk == kind && key.starts_with(prefix) {
-                map.insert(key.clone(), v.clone());
-            }
-        }
-        map.into_iter()
-            .map(|(k, v)| {
-                serde_json::from_value(v)
-                    .map(|t| (k, t))
-                    .map_err(|e| err::internal(format!("aggregate decode: {e}")))
-            })
-            .collect()
-    }
-
     pub fn put<T: Serialize>(
         &mut self,
         kind: &str,
@@ -269,10 +242,23 @@ impl<'a> Tx<'a> {
         Ok((o, body))
     }
 
+    /// Stages a journal event. Absent (`null`) fields are omitted, as in every canonical object.
     pub fn emit(&mut self, kind: &str, body: Value, subjects: Vec<String>) {
+        fn strip(v: Value) -> Value {
+            match v {
+                Value::Object(m) => Value::Object(
+                    m.into_iter()
+                        .filter(|(_, v)| !v.is_null())
+                        .map(|(k, v)| (k, strip(v)))
+                        .collect(),
+                ),
+                Value::Array(a) => Value::Array(a.into_iter().map(strip).collect()),
+                other => other,
+            }
+        }
         self.events.push(PendingEvent {
             kind: kind.to_owned(),
-            body,
+            body: strip(body),
             subjects,
         });
     }
