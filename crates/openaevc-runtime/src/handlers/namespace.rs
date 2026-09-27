@@ -1,7 +1,5 @@
 //! Namespace, principal, capability-grant and policy commands.
 
-use std::collections::BTreeSet;
-
 use openaevc_core::names;
 use openaevc_core::IdGeneratorExt;
 use openaevc_protocol::{
@@ -232,19 +230,7 @@ pub(crate) fn register_policy(
     mandatory: bool,
 ) -> Result<CommandResult> {
     authz(tx, ctx, "policy.register", None)?;
-    names::validate_namespaced(&doc.name)?;
-    let mut ids = BTreeSet::new();
-    if doc.rules.is_empty()
-        || !doc
-            .rules
-            .iter()
-            .all(|r| !r.id.is_empty() && ids.insert(r.id.clone()))
-    {
-        return Err(err::invalid(
-            "policy needs rules with unique, non-empty ids",
-        ));
-    }
-    openaevc_policy_validate(&doc)?;
+    openaevc_policy::validate(&doc)?;
     let content = openaevc_crypto::digest_of(&doc)?;
     let pkey = records::key(&tx.ns, content);
     let digest = match tx.get::<openaevc_protocol::Digest>(records::POLICY, &pkey)? {
@@ -272,26 +258,4 @@ pub(crate) fn register_policy(
         digest: Some(digest),
         ..Default::default()
     })
-}
-
-/// Structural policy validation (fact names must be namespaced).
-fn openaevc_policy_validate(doc: &PolicyDocument) -> Result<()> {
-    use openaevc_protocol::Expr;
-    fn walk(e: &Expr) -> Result<()> {
-        match e {
-            Expr::All(v) | Expr::Any(v) => v.iter().try_for_each(walk),
-            Expr::Not(x) => walk(x),
-            Expr::Eq(c) | Expr::Ne(c) => names::validate_namespaced(&c.fact),
-            Expr::Lt(c) | Expr::Le(c) | Expr::Gt(c) | Expr::Ge(c) => {
-                names::validate_namespaced(&c.fact)
-            }
-            Expr::In(c) => names::validate_namespaced(&c.fact),
-            Expr::Contains(c) => names::validate_namespaced(&c.fact),
-            Expr::Exists(c) => names::validate_namespaced(&c.fact),
-            Expr::Verifier(c) => names::validate_namespaced(&c.kind),
-            Expr::Evaluator(c) => names::validate_namespaced(&c.kind),
-            Expr::Evidence(c) => names::validate_namespaced(&c.kind),
-        }
-    }
-    doc.rules.iter().try_for_each(|r| walk(&r.expr))
 }
