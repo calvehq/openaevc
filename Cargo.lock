@@ -515,6 +515,7 @@ dependencies = [
  "openaevc-protocol",
  "openaevc-store",
  "openaevc-testkit",
+ "openaevc-verification",
  "serde",
  "serde_json",
  "tempfile",
@@ -551,6 +552,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "openaevc-verification"
+version = "0.1.0"
+dependencies = [
+ "openaevc-core",
+ "openaevc-policy",
+ "openaevc-protocol",
+ "serde",
 ]
 
 [[package]]

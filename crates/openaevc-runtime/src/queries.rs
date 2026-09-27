@@ -223,6 +223,27 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
                 .collect();
             to_json(&out)
         }
+        GetEvidence { digest } => {
+            typed_object(tx, ctx, digest, openaevc_protocol::ObjectKind::Evidence)
+        }
+        GetVerification { digest } => typed_object(
+            tx,
+            ctx,
+            digest,
+            openaevc_protocol::ObjectKind::VerificationResult,
+        ),
+        GetEvaluation { digest } => typed_object(
+            tx,
+            ctx,
+            digest,
+            openaevc_protocol::ObjectKind::EvaluationResult,
+        ),
+        GetPolicyDecision { digest } => typed_object(
+            tx,
+            ctx,
+            digest,
+            openaevc_protocol::ObjectKind::PolicyDecision,
+        ),
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()
@@ -292,4 +313,22 @@ fn node_json(tx: &Tx<'_>, n: &NodeRef) -> Result<Value> {
         return Ok(json!({"node": d, "type": o.kind()}));
     }
     Err(missing())
+}
+
+fn typed_object(
+    tx: &Tx<'_>,
+    ctx: &Ctx,
+    digest: openaevc_protocol::Digest,
+    kind: openaevc_protocol::ObjectKind,
+) -> Result<Value> {
+    authz(tx, ctx, "namespace.read", None)?;
+    let o = tx
+        .load_object(&digest)?
+        .ok_or_else(|| err::not_found(format!("object {digest} not found")).with_object(digest))?;
+    if o.kind() != kind {
+        return Err(
+            err::not_found(format!("{digest} is not a {}", kind.as_str())).with_object(digest),
+        );
+    }
+    object_json(&o)
 }

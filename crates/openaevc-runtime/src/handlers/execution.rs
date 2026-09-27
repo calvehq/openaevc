@@ -811,3 +811,21 @@ pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<()> {
     rt.notify.send_modify(|v| *v += 1);
     Ok(())
 }
+
+/// Records a runtime-owned VERIFIES/EVALUATES edge from a result object to its candidate.
+pub(crate) fn add_result_edge(
+    tx: &mut Tx<'_>,
+    result: Digest,
+    candidate: Digest,
+    kind: ActiveEdgeKind,
+) -> Result<()> {
+    add_edges(
+        tx,
+        vec![ActiveEdge {
+            from: NodeRef::Digest(result),
+            to: NodeRef::Digest(candidate),
+            kind,
+            annotations: Default::default(),
+        }],
+    )
+}

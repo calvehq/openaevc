@@ -748,3 +748,87 @@ impl openaevc_execution::Harness for ScriptedHarness {
         Ok(())
     }
 }
+
+impl Harness {
+    /// Seals the pack at its current generation; returns the candidate digest.
+    pub fn seal(&self, who: &Identity, ns: NamespaceId, pack: PackId) -> Digest {
+        let g = self.pack(who, ns, pack).generation;
+        self.client(who, ns)
+            .cmd(Command::SealChangePack {
+                pack,
+                expected_generation: g,
+            })
+            .expect("seal")
+            .result
+            .digest
+            .expect("candidate")
+    }
+
+    pub fn verify(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+        verifier: &str,
+        config: Value,
+    ) -> Result<CommandReceipt, ProtocolError> {
+        let g = self.pack(who, ns, pack).generation;
+        self.client(who, ns).cmd(Command::RunVerification {
+            pack,
+            generation: g,
+            verifier: verifier.into(),
+            config: Some(config),
+            evidence: vec![],
+        })
+    }
+
+    pub fn evaluate(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        pack: PackId,
+        evaluator: &str,
+        config: Value,
+    ) -> Result<CommandReceipt, ProtocolError> {
+        let g = self.pack(who, ns, pack).generation;
+        self.client(who, ns).cmd(Command::RunEvaluation {
+            pack,
+            generation: g,
+            evaluator: evaluator.into(),
+            config: Some(config),
+            inputs: vec![],
+        })
+    }
+
+    pub fn qualify(&self, who: &Identity, ns: NamespaceId, pack: PackId) -> CommandReceipt {
+        let g = self.pack(who, ns, pack).generation;
+        self.client(who, ns)
+            .cmd(Command::RefreshQualification {
+                pack,
+                generation: g,
+            })
+            .expect("refresh qualification")
+    }
+
+    /// Registers a mandatory Namespace policy: every `kv.expect` verification must pass and
+    /// `kv.size` must not deny.
+    pub fn kv_gate(&self, root: &Identity, ns: NamespaceId) -> Digest {
+        let doc: PolicyDocument = serde_json::from_value(serde_json::json!({
+            "name": "org.openaevc.testkit.kv-gate",
+            "rules": [
+                {"id": "expect-pass", "expr": {"verifier": {"kind": "kv.expect", "status": "PASS"}}},
+                {"id": "size-not-denied", "expr": {"not": {"evaluator": {"kind": "kv.size", "verdict": "DENY"}}}}
+            ]
+        }))
+        .expect("policy");
+        self.client(root, ns)
+            .cmd(Command::RegisterPolicy {
+                document: doc,
+                mandatory: true,
+            })
+            .expect("register policy")
+            .result
+            .digest
+            .expect("digest")
+    }
+}
