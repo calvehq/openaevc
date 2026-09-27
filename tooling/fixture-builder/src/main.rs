@@ -780,8 +780,23 @@ fn main() {
                 stale = true;
             }
         } else {
-            std::fs::write(&path, content).unwrap();
+            std::fs::write(&path, &content).unwrap();
             println!("wrote fixtures/canonical/{name}");
+        }
+        // Package-local copies so the published conformance crate is self-contained.
+        if ["values.json", "objects.json", "signatures.json"].contains(&name) {
+            let copy = root
+                .join("../../crates/openaevc-conformance/fixtures")
+                .join(name);
+            if check {
+                if std::fs::read_to_string(&copy).ok().as_deref() != Some(content.as_str()) {
+                    eprintln!("crates/openaevc-conformance/fixtures/{name} is out of date; run `cargo run -p fixture-builder`");
+                    stale = true;
+                }
+            } else {
+                std::fs::create_dir_all(copy.parent().unwrap()).unwrap();
+                std::fs::write(&copy, &content).unwrap();
+            }
         }
     }
     if stale {

@@ -1094,6 +1094,7 @@ name = "openaevcd"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "openaevc-conformance",
  "openaevc-core",
  "openaevc-crypto",
  "openaevc-protocol",

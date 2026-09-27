@@ -1,0 +1,108 @@
+name: release
+# Builds, verifies, signs and packages a release. Publication to crates.io, npm and PyPI runs as a
+# dry run only: switching a step to a real publish is a deliberate maintainer change.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo test --workspace --locked
+      # Scenario K: the release daemon from a clean data root passes FULL conformance remotely.
+      - run: cargo test --release --locked -p openaevcd --test scenario_k
+
+  binaries:
+    needs: verify
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo build --release --locked -p openaevcd -p openaevc-conformance-cli -p openaevc-inspect
+        env:
+          SOURCE_DATE_EPOCH: "0"
+          RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=.
+      - name: Package
+        shell: bash
+        run: |
+          exe=""; [ "${{ runner.os }}" = "Windows" ] && exe=".exe"
+          mkdir dist
+          for b in openaevcd openaevc-conformance openaevc-inspect; do
+            cp "target/release/$b$exe" "dist/$b-${{ matrix.target }}$exe"
+          done
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.target }}
+          path: dist/*
+
+  assemble:
+    needs: binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: Source, schemas and fixtures
+        run: |
+          git archive --format=tar.gz --prefix=openaevc/ -o dist/openaevc-src.tar.gz HEAD
+          tar czf dist/openaevc-schemas.tar.gz schemas
+          tar czf dist/openaevc-conformance-fixtures.tar.gz fixtures
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/openaevc.spdx.json
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+      - uses: sigstore/cosign-installer@v3
+      - name: Keyless signatures
+        working-directory: dist
+        run: |
+          for f in *; do
+            cosign sign-blob --yes --output-signature "$f.sig" --output-certificate "$f.pem" "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: dist/*
+
+  publish-dry-run:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo publish --workspace --dry-run --locked
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - working-directory: sdk/typescript
+        run: npm ci && npm run build && npm publish --dry-run --access public
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - working-directory: sdk/python
+        run: python -m pip install build twine && python -m build && twine check dist/*

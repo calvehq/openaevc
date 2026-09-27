@@ -1,0 +1,49 @@
+name: conformance
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  full:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo build --release --locked -p openaevc-conformance-cli -p openaevc-ext-reference-kv -p openaevc-ext-reference-null -p openaevc-ext-conformance-fixtures
+      - name: FULL in-process
+        shell: bash
+        run: |
+          ext=$(mktemp -d)
+          scripts/install-conformance-extensions.sh target/release "$ext"
+          target/release/openaevc-conformance --profile FULL --target in-process --extensions "$ext" \
+            --report-json conformance.json --junit conformance.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: conformance-${{ matrix.os }}
+          path: conformance.*
+
+  # Scenario K: the packaged release daemon, from a clean data root, passes FULL over the transport.
+  remote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo test --release --locked -p openaevcd --test scenario_k -- --nocapture
+
+  load:
+    # Engineering performance targets: 50 000 packs, ≥100 000 journal events, latency bounds.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo test --release --locked -p openaevc-runtime --test load -- --ignored --nocapture

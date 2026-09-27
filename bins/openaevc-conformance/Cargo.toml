@@ -10,6 +10,7 @@ repository.workspace = true
 [[bin]]
 name = "openaevc-conformance"
 path = "src/main.rs"
+doc = false
 
 [lints]
 workspace = true

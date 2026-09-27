@@ -158,7 +158,7 @@ pub trait Store: Send + Sync {
     fn prune_requests(&self, before: Timestamp) -> Result<usize>;
     fn latest_snapshot(&self, namespace: &NamespaceId) -> Result<Option<SnapshotRecord>>;
     fn namespaces(&self) -> Result<Vec<NamespaceId>>;
-    /// Atomically applies a batch after validating it (see [`validate_batch`]).
+    /// Atomically applies a batch after validating it (versions, journal chain, references, replay).
     fn commit(&self, batch: WriteBatch) -> Result<()>;
     /// Full offline integrity scan: journal chains, object digests, index references,
     /// snapshots.

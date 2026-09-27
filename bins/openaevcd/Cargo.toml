@@ -29,6 +29,8 @@ rustls.workspace = true
 tokio-rustls.workspace = true
 
 [dev-dependencies]
+openaevc-conformance.workspace = true
+openaevc-crypto.workspace = true
 tempfile.workspace = true
 openaevc-testkit.workspace = true
 openaevc-sdk.workspace = true
