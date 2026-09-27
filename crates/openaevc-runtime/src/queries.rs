@@ -190,6 +190,18 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             read(tx)?;
             to_json(&handlers::work_status(tx, pack, false)?)
         }
+        ListExtensions {} => {
+            read(tx)?;
+            let recs = tx.peek_list::<records::ExtensionRecord>(
+                records::EXTENSION,
+                &records::prefix(&tx.ns),
+            )?;
+            Ok(Value::Array(
+                recs.into_iter()
+                    .map(|(_, r)| json!({"id": r.manifest.id, "version": r.manifest.version, "manifest": r.manifest_digest, "active": r.active, "granted_host_capabilities": r.approved}))
+                    .collect(),
+            ))
+        }
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()

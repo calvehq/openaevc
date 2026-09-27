@@ -1,0 +1,18 @@
+[package]
+name = "openaevc-ext-reference-null"
+description = "OpenAEVC reference-null extension (reference/conformance use only)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+openaevc-protocol.workspace = true
+openaevc-extension-contract.workspace = true
+serde_json.workspace = true
+serde.workspace = true

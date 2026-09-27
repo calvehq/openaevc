@@ -1,6 +1,7 @@
 //! Command handlers. Each handler authorizes, validates, stages state changes and emits at
 //! least one journal event through the transaction; the caller commits atomically.
 
+mod extensions;
 mod graph;
 mod namespace;
 pub(crate) mod packs;
@@ -106,6 +107,19 @@ pub(crate) fn dispatch(tx: &mut Tx<'_>, ctx: &Ctx, cmd: Command) -> Result<Comma
         QuarantineChangePack { pack, reason } => packs::quarantine(tx, ctx, pack, reason),
         ReleaseQuarantine { pack } => packs::release(tx, ctx, pack),
         PromoteChangePack { pack, generation } => promotion::promote(tx, ctx, pack, generation),
+        RegisterExtension {
+            entrypoint,
+            artifact_digest,
+            approved_host_capabilities,
+        } => extensions::register(
+            tx,
+            ctx,
+            entrypoint,
+            artifact_digest,
+            approved_host_capabilities,
+        ),
+        UnregisterExtension { extension } => extensions::unregister(tx, ctx, extension),
+        RegisterProvider { provider } => extensions::register_provider(tx, ctx, provider),
         other => Err(openaevc_protocol::err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()

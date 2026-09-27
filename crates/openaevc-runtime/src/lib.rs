@@ -10,6 +10,7 @@
 //! matters.
 #![forbid(unsafe_code)]
 
+mod ext;
 mod handlers;
 mod queries;
 mod records;
