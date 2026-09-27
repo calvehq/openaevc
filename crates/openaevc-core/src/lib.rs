@@ -6,6 +6,7 @@ pub mod events;
 pub mod lifecycle;
 pub mod names;
 pub mod object;
+pub mod request;
 
 pub use clock::{
     Clock, FixedClock, FromUuid, IdGenerator, IdGeneratorExt, SequentialIds, SystemClock, UuidV7Ids,

@@ -7,6 +7,8 @@ members = [
     "crates/openaevc-core",
     "crates/openaevc-authority",
     "crates/openaevc-store",
+    "crates/openaevc-runtime",
+    "crates/openaevc-testkit",
     "tooling/generate-schemas",
     "tooling/fixture-builder",
 ]
@@ -40,6 +42,8 @@ openaevc-crypto = { path = "crates/openaevc-crypto", version = "0.1.0" }
 openaevc-core = { path = "crates/openaevc-core", version = "0.1.0" }
 openaevc-authority = { path = "crates/openaevc-authority", version = "0.1.0" }
 openaevc-store = { path = "crates/openaevc-store", version = "0.1.0" }
+openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
+openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
 schemars = "1"
 base64 = "0.22"
@@ -48,3 +52,4 @@ ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 tempfile = "3"
+tokio = { version = "1", features = ["sync"] }

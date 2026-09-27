@@ -26,9 +26,10 @@ not timestamp, is the authoritative order.
 SHA-256 value as `previous_hash`. Any modification, removal, reordering or relinking of events
 MUST be detectable by recomputing the chain.
 
-**AEVC-EVT-0004** Every `checkpoint_interval` events (reference default 1000) and at the
-`GetJournalCheckpoint` query when none exists yet, the runtime writes a `journal_checkpoint`
-object signed by its runtime key, committing to the sequence and terminal hash.
+**AEVC-EVT-0004** Whenever a commit's events include a sequence that is a multiple of
+`checkpoint_interval` (reference default 1000), the runtime writes, in the same transaction, a
+`journal_checkpoint` object signed by its runtime key committing to that sequence and its event
+hash. `GetJournalCheckpoint` returns the latest one.
 
 ## Event kinds
 
