@@ -200,3 +200,25 @@ fn refuses_to_run_without_initialization() {
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("openaevcd init"));
 }
+
+#[test]
+fn gc_removes_unreferenced_bytes_offline() {
+    let dir = tempfile::tempdir().unwrap();
+    let (config, _) = init(dir.path());
+    let hex = "ab".repeat(32);
+    let orphan = dir.path().join("data/objects/sha256/ab").join(&hex);
+    std::fs::create_dir_all(orphan.parent().unwrap()).unwrap();
+    std::fs::write(&orphan, b"left by a crash").unwrap();
+    let out = Command::new(BIN)
+        .args(["gc", "--grace-seconds", "0", "--config"])
+        .arg(&config)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(String::from_utf8_lossy(&out.stdout).contains("removed 1"));
+    assert!(!orphan.exists());
+}

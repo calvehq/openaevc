@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use openaevc_protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::ctx::{ensure, expect_code, fresh, kv_set, Check, Ctx, Ns};
 use crate::CaseResult;
@@ -1222,11 +1222,14 @@ pub async fn composition(cx: &Ctx) -> CaseResult {
     let (_, b) = cx.promote_empty(&ns.root).await?;
     // Dependencies must be members.
     let dep = ns.root.create_change_pack(PackSpec::default()).await.c()?;
-    let (pa, _) = (a, ());
-    let a_pack = {
-        let o: PromotedPack = ns.root.get_object(pa).await.c()?.body().c()?;
-        o.pack
-    };
+    let a_pack = ns
+        .root
+        .get_object(a)
+        .await
+        .c()?
+        .body::<PromotedPack>()
+        .c()?
+        .pack;
     ns.root
         .command(Command::AddActiveDependency {
             pack: dep,
@@ -1477,6 +1480,5 @@ pub async fn transport(cx: &Ctx) -> CaseResult {
             )?;
         }
     }
-    let _: Value = Value::Null;
     Ok(())
 }

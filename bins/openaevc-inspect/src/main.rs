@@ -11,7 +11,7 @@ use openaevc_protocol::{ObjectEnvelope, SUPPORTED_PROTOCOL};
 use openaevc_store::{SqliteOptions, SqliteStore, Store};
 use serde_json::Value;
 
-const SCHEMA: &str = include_str!("../../../schemas/json/openaevc.schema.json");
+const SCHEMA: &str = include_str!("../openaevc.schema.json");
 
 #[derive(Parser, Debug)]
 #[command(

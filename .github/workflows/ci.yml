@@ -19,6 +19,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: python3 -m unittest discover -s tooling/release-check -p 'test_*.py'
       - run: python3 tooling/release-check/check.py --markers
+      - name: Requirement coverage
+        run: python3 tooling/release-check/coverage.py
+      - name: Generated files are up to date
+        run: |
+          cargo run -q --locked -p generate-schemas -- --check
+          cargo run -q --locked -p generate-sdks -- --check
+          cargo run -q --locked -p fixture-builder -- --check
 
   test:
     strategy:
@@ -29,8 +36,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
+      # Scenario J drives the daemon from every SDK.
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
       - run: cargo build --workspace --locked
+      # Includes the conformance suite: the reference runtime must pass FULL in-process.
       - run: cargo test --workspace --locked
+
+  sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - name: TypeScript
+        working-directory: sdk/typescript
+        run: npm ci && npm run typecheck && npm test && npm run build
+      - name: Python
+        working-directory: sdk/python
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Go
+        working-directory: sdk/go
+        run: go vet ./... && go test ./...
 
   msrv:
     runs-on: ubuntu-latest

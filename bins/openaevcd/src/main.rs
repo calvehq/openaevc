@@ -64,6 +64,14 @@ enum Cmd {
         #[arg(long, env = "OPENAEVCD_CONFIG")]
         config: PathBuf,
     },
+    /// Remove bytes no Namespace indexes (crash leftovers, abandoned uploads) older than the
+    /// grace period. Accepted history is never removed. Run with the daemon stopped.
+    Gc {
+        #[arg(long, env = "OPENAEVCD_CONFIG")]
+        config: PathBuf,
+        #[arg(long, default_value_t = 3600)]
+        grace_seconds: u64,
+    },
 }
 
 fn key_dir(root: &Path) -> PathBuf {
@@ -377,6 +385,18 @@ fn main() -> ExitCode {
         Cmd::PrintEffectiveConfig { config } => Config::load(&config)
             .and_then(|c| c.redacted_toml())
             .map(|t| print!("{t}")),
+        Cmd::Gc {
+            config,
+            grace_seconds,
+        } => Config::load(&config).and_then(|c| {
+            let store =
+                SqliteStore::open(&c.data_root, SqliteOptions::default()).map_err(|e| e.message)?;
+            let r = store
+                .collect_garbage(Duration::from_secs(grace_seconds))
+                .map_err(|e| e.message)?;
+            println!("gc: scanned {}, removed {}", r.scanned, r.removed);
+            Ok(())
+        }),
         Cmd::Run { config, migrate } => Config::load(&config).and_then(|c| {
             init_logging(&c);
             let rt = tokio::runtime::Builder::new_multi_thread()

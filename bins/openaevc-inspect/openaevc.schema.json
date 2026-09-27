@@ -1,0 +1,5023 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json",
+  "title": "OpenAEVC protocol 0.1.0",
+  "description": "JSON representation of OpenAEVC protocol types. Canonical CBOR uses the same data model (spec/canonical-encoding.md).",
+  "$defs": {
+    "ActiveEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/NodeRef"
+        },
+        "to": {
+          "$ref": "#/$defs/NodeRef"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActiveEdgeKind"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "kind"
+      ]
+    },
+    "ActiveEdgeKind": {
+      "type": "string",
+      "enum": [
+        "DEPENDS_ON",
+        "BLOCKS",
+        "PRODUCES",
+        "CONSUMES",
+        "DERIVED_FROM",
+        "VERIFIES",
+        "EVALUATES",
+        "REVISION_OF"
+      ]
+    },
+    "AppliedEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EffectId"
+        },
+        "work_unit": {
+          "$ref": "#/$defs/WorkUnitId"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "payload": true,
+        "preconditions": {
+          "type": "array",
+          "items": true
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        },
+        "outcome": {
+          "description": "Extension-reported application outcome."
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "work_unit",
+        "kind",
+        "target",
+        "payload",
+        "outcome",
+        "provenance"
+      ],
+      "description": "An effect accepted into a candidate."
+    },
+    "Baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/BaselineId"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "description": "PromotedPack digests, sorted."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CompositionEdge"
+          },
+          "description": "Canonical edge list, sorted."
+        },
+        "heads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "description": "Members that are lineage heads (not superseded by another member), sorted."
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FactValue"
+          }
+        },
+        "graph_digest": {
+          "$ref": "#/$defs/Digest",
+          "description": "Digest of the canonical `{members, edges}` graph."
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "id",
+        "members",
+        "heads",
+        "graph_digest"
+      ],
+      "description": "Immutable commitment to a validated composition graph of promoted packs."
+    },
+    "BaselineId": {
+      "type": "string",
+      "pattern": "^bsl_[a-z2-7]{26}$",
+      "description": "Typed identifier: bsl_ + base32(UUIDv7)."
+    },
+    "Blob": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "media_type": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "media_type",
+        "data"
+      ],
+      "description": "Opaque bytes (evidence payloads, large observation payloads)."
+    },
+    "Candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AppliedEffect"
+          }
+        }
+      },
+      "required": [
+        "pack",
+        "generation",
+        "effects"
+      ],
+      "description": "Frozen candidate state of a sealed pack generation."
+    },
+    "ChangePack": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PackId"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "state": {
+          "$ref": "#/$defs/PackState"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "intent": true,
+        "resource_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        },
+        "work_units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkUnit"
+          }
+        },
+        "required_policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "extension_bindings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicts_with": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AppliedEffect"
+          },
+          "description": "Effects accepted into the candidate so far (bound to `generation`)."
+        },
+        "sealed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SealInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qualification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QualificationInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quarantine": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QuarantineInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "promotion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromotionInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "generation",
+        "state",
+        "created_by",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Mutable pre-promotion work under a stable identity. Every structural change produces a new\ngeneration; historical generations stay auditable."
+    },
+    "Command": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "root_principals": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NewPrincipal"
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "type": {
+              "type": "string",
+              "const": "CreateNamespace"
+            }
+          },
+          "required": [
+            "type",
+            "root_principals"
+          ],
+          "description": "Create a Namespace with its root principals (runtime administrators only)."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "principal": {
+              "$ref": "#/$defs/NewPrincipal"
+            },
+            "type": {
+              "type": "string",
+              "const": "RegisterPrincipal"
+            }
+          },
+          "required": [
+            "type",
+            "principal"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "grant": {
+              "$ref": "#/$defs/SignedGrant"
+            },
+            "type": {
+              "type": "string",
+              "const": "IssueCapabilityGrant"
+            }
+          },
+          "required": [
+            "type",
+            "grant"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "grant": {
+              "$ref": "#/$defs/GrantId"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "RevokeCapabilityGrant"
+            }
+          },
+          "required": [
+            "type",
+            "grant"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "document": {
+              "$ref": "#/$defs/PolicyDocument"
+            },
+            "mandatory": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "RegisterPolicy"
+            }
+          },
+          "required": [
+            "type",
+            "document"
+          ],
+          "description": "Store an immutable PolicyDocument; `mandatory` adds it to the Namespace gates."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entrypoint": {
+              "type": "string"
+            },
+            "artifact_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "approved_host_capabilities": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/HostCapability"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "RegisterExtension"
+            }
+          },
+          "required": [
+            "type",
+            "entrypoint",
+            "artifact_digest"
+          ],
+          "description": "Load, handshake and register an extension from a configured extension directory."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "extension": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "UnregisterExtension"
+            }
+          },
+          "required": [
+            "type",
+            "extension"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": {
+              "$ref": "#/$defs/ProviderDescriptor"
+            },
+            "type": {
+              "type": "string",
+              "const": "RegisterProvider"
+            }
+          },
+          "required": [
+            "type",
+            "provider"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "spec": {
+              "$ref": "#/$defs/PackSpec",
+              "default": {}
+            },
+            "type": {
+              "type": "string",
+              "const": "CreateChangePack"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "relation": {
+              "$ref": "#/$defs/RevisionRelation"
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "spec": {
+              "$ref": "#/$defs/PackSpec",
+              "default": {}
+            },
+            "type": {
+              "type": "string",
+              "const": "CreateRevisionPack"
+            }
+          },
+          "required": [
+            "type",
+            "relation",
+            "targets"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "intent": true,
+            "resource_refs": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/$defs/ResourceRef"
+              }
+            },
+            "required_policies": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "extension_bindings": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "conflicts_with": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "metadata": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "type": {
+              "type": "string",
+              "const": "UpdateChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation"
+          ],
+          "description": "Structural update; absent fields are unchanged. Produces a new generation."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string"
+            },
+            "spec": true,
+            "depends_on": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeRef"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "AddWorkUnit"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation",
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "work_unit": {
+              "$ref": "#/$defs/WorkUnitId"
+            },
+            "spec": true,
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WorkUnitState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "UpdateWorkUnit"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation",
+            "work_unit"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "from": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "to": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "kind": {
+              "$ref": "#/$defs/ActiveEdgeKind"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "type": {
+              "type": "string",
+              "const": "AddActiveDependency"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation",
+            "from",
+            "to",
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "from": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "to": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "kind": {
+              "$ref": "#/$defs/ActiveEdgeKind"
+            },
+            "type": {
+              "type": "string",
+              "const": "RemoveActiveDependency"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation",
+            "from",
+            "to",
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "SealChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "ReopenChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "expected_generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "AbandonChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "expected_generation"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "QuarantineChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "reason"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "type": {
+              "type": "string",
+              "const": "ReleaseQuarantine"
+            }
+          },
+          "required": [
+            "type",
+            "pack"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/ExecutionRequest"
+            },
+            "type": {
+              "type": "string",
+              "const": "StartExecution"
+            }
+          },
+          "required": [
+            "type",
+            "request"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "lease": {
+              "$ref": "#/$defs/LeaseId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "HeartbeatExecution"
+            }
+          },
+          "required": [
+            "type",
+            "execution",
+            "lease",
+            "generation"
+          ],
+          "description": "Renew the lease. With a resumable provider, also the recovery proof for an expired lease."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "CancelExecution"
+            }
+          },
+          "required": [
+            "type",
+            "execution"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "lease": {
+              "$ref": "#/$defs/LeaseId"
+            },
+            "effect": {
+              "$ref": "#/$defs/EffectProposal"
+            },
+            "type": {
+              "type": "string",
+              "const": "SubmitEffectProposal"
+            }
+          },
+          "required": [
+            "type",
+            "execution",
+            "lease",
+            "effect"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "lease": {
+              "$ref": "#/$defs/LeaseId"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "payload": true,
+            "blob": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Blob"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "related_resources": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ResourceRef"
+              }
+            },
+            "related_effects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EffectId"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "AppendObservation"
+            }
+          },
+          "required": [
+            "type",
+            "execution",
+            "lease",
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "lease": {
+              "$ref": "#/$defs/LeaseId"
+            },
+            "type": {
+              "type": "string",
+              "const": "CompleteExecution"
+            }
+          },
+          "required": [
+            "type",
+            "execution",
+            "lease"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "lease": {
+              "$ref": "#/$defs/LeaseId"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "FailExecution"
+            }
+          },
+          "required": [
+            "type",
+            "execution",
+            "lease",
+            "reason"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "candidate": {
+              "$ref": "#/$defs/Digest"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/Blob"
+            },
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SchemaRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/NodeRef"
+              }
+            },
+            "extension": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "RegisterEvidence"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "generation",
+            "candidate",
+            "kind",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "verifier": {
+              "type": "string"
+            },
+            "config": true,
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "RunVerification"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "generation",
+            "verifier"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "evaluator": {
+              "type": "string"
+            },
+            "config": true,
+            "inputs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "RunEvaluation"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "generation",
+            "evaluator"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "RefreshQualification"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "generation"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "PromoteChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack",
+            "generation"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "members": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/CompositionEdge"
+              }
+            },
+            "policies": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "type": {
+              "type": "string",
+              "const": "CreateBaseline"
+            }
+          },
+          "required": [
+            "type",
+            "members"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "bytes": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "PutImmutableObject"
+            }
+          },
+          "required": [
+            "type",
+            "digest",
+            "bytes"
+          ],
+          "description": "Import canonical object bytes by digest (object exchange)."
+        }
+      ]
+    },
+    "CommandEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/ProtocolVersion"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "namespace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NamespaceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "caller": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "act_as": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "ACTOR principal linked to `caller` on whose behalf the request is made."
+        },
+        "nonce": {
+          "type": "string"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "body": {
+          "$ref": "#/$defs/Command"
+        },
+        "signature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Signature"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "protocol_version",
+        "request_id",
+        "caller",
+        "nonce",
+        "issued_at",
+        "body"
+      ],
+      "description": "Signed request envelope. The signature covers the canonical encoding of the envelope with\n`signature` omitted, in the `request` signature domain."
+    },
+    "CommandReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt": {
+          "$ref": "#/$defs/Digest"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "result": {
+          "$ref": "#/$defs/CommandResult"
+        },
+        "first_seq": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "last_seq": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "receipt",
+        "request_id",
+        "result",
+        "first_seq",
+        "last_seq"
+      ],
+      "description": "What a command returns: the result plus the digest of its signed receipt object."
+    },
+    "CommandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lease"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Result data of a successful command (also embedded in its receipt)."
+    },
+    "CompositionEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/Digest"
+        },
+        "to": {
+          "$ref": "#/$defs/Digest"
+        },
+        "kind": {
+          "$ref": "#/$defs/CompositionEdgeKind"
+        },
+        "relation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionRelation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "kind"
+      ]
+    },
+    "CompositionEdgeKind": {
+      "type": "string",
+      "enum": [
+        "REQUIRES",
+        "ORDERS_AFTER",
+        "CONFLICTS_WITH",
+        "REVISION_RELATION"
+      ]
+    },
+    "DecisionOutcome": {
+      "type": "string",
+      "enum": [
+        "ALLOW",
+        "DENY"
+      ]
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Algorithm-tagged SHA-256 digest."
+    },
+    "EffectId": {
+      "type": "string",
+      "pattern": "^eff_[a-z2-7]{26}$",
+      "description": "Typed identifier: eff_ + base32(UUIDv7)."
+    },
+    "EffectKindDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "resource_kind": {
+          "type": "string"
+        },
+        "required_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Authority actions the actor must hold on the target resource to propose this effect."
+        }
+      },
+      "required": [
+        "kind",
+        "resource_kind",
+        "required_actions"
+      ]
+    },
+    "EffectProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "payload": {
+          "description": "Extension-defined canonical payload."
+        },
+        "preconditions": {
+          "type": "array",
+          "items": true
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "payload"
+      ],
+      "description": "A structured proposed change submitted by a worker through its harness."
+    },
+    "EffectSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/ResourceRef"
+        }
+      },
+      "required": [
+        "kind",
+        "target"
+      ]
+    },
+    "Entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Executable path relative to the extension directory it was registered from."
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "command"
+      ]
+    },
+    "ErrorCategory": {
+      "type": "string",
+      "enum": [
+        "REQUEST",
+        "AUTHORITY",
+        "LIFECYCLE",
+        "GRAPH",
+        "EXECUTION",
+        "EXTENSION",
+        "QUALIFICATION",
+        "CONFLICT",
+        "INTEGRITY",
+        "INTERNAL"
+      ]
+    },
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_ARGUMENT",
+        "NOT_FOUND",
+        "ALREADY_EXISTS",
+        "UNAUTHORIZED",
+        "FORBIDDEN",
+        "CAPABILITY_EXPIRED",
+        "CAPABILITY_REVOKED",
+        "REPLAY_DETECTED",
+        "STALE_GENERATION",
+        "INVALID_TRANSITION",
+        "IMMUTABLE_OBJECT",
+        "QUARANTINED",
+        "DEPENDENCY_CYCLE",
+        "DEPENDENCY_MISSING",
+        "EXECUTION_NOT_READY",
+        "EXECUTION_LOST",
+        "EXTENSION_INCOMPATIBLE",
+        "EXTENSION_FAILED",
+        "EVIDENCE_INVALID",
+        "VERIFICATION_FAILED",
+        "POLICY_DENIED",
+        "NOT_QUALIFIED",
+        "COMPOSITION_INVALID",
+        "CONFLICT",
+        "DIGEST_MISMATCH",
+        "CANONICAL_ENCODING_ERROR",
+        "PROTOCOL_VERSION_UNSUPPORTED",
+        "STORAGE_INTEGRITY_ERROR",
+        "RECOVERY_REQUIRED",
+        "INTERNAL"
+      ]
+    },
+    "EvaluationId": {
+      "type": "string",
+      "pattern": "^evl_[a-z2-7]{26}$",
+      "description": "Typed identifier: evl_ + base32(UUIDv7)."
+    },
+    "EvaluationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EvaluationId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "evaluator": {
+          "type": "string"
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtensionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config": true,
+        "verdict": {
+          "$ref": "#/$defs/EvaluationVerdict"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FactValue"
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "started_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "finished_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "provenance": {
+          "$ref": "#/$defs/RunProvenance"
+        }
+      },
+      "required": [
+        "id",
+        "pack",
+        "generation",
+        "candidate",
+        "evaluator",
+        "verdict",
+        "started_at",
+        "finished_at",
+        "provenance"
+      ]
+    },
+    "EvaluationVerdict": {
+      "type": "string",
+      "enum": [
+        "ALLOW",
+        "WARN",
+        "DENY",
+        "UNKNOWN"
+      ]
+    },
+    "EvaluatorCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/EvaluationVerdict"
+        }
+      },
+      "required": [
+        "kind",
+        "verdict"
+      ]
+    },
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EventId"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "sequence": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RequestId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "body": true,
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Typed IDs / digests this event concerns (subscription filtering)."
+        },
+        "timestamp": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "previous_hash": {
+          "$ref": "#/$defs/Digest"
+        },
+        "hash": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "sequence",
+        "runtime_instance",
+        "kind",
+        "body",
+        "timestamp",
+        "previous_hash",
+        "hash"
+      ],
+      "description": "Journal event (spec/events.md). `hash = SHA-256(canonical(event without hash) ||\nprevious_hash bytes)`."
+    },
+    "EventFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "after": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "description": "Deliver events with sequence strictly greater than this cursor.",
+          "default": 0
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match events whose subjects include this ID/digest (object, execution or pack)."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "description": "Subscription filter. Delivery is at-least-once; consumers deduplicate by sequence."
+    },
+    "EventId": {
+      "type": "string",
+      "pattern": "^evt_[a-z2-7]{26}$",
+      "description": "Typed identifier: evt_ + base32(UUIDv7)."
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EvidenceId"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "producer": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "payload": {
+          "$ref": "#/$defs/Digest",
+          "description": "Digest of the Blob object holding the payload."
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SchemaRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NodeRef"
+          }
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtensionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "producer",
+        "pack",
+        "generation",
+        "candidate",
+        "payload",
+        "media_type",
+        "created_at"
+      ],
+      "description": "Immutable, content-addressed evidence bound to one candidate/generation."
+    },
+    "EvidenceCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "EvidenceId": {
+      "type": "string",
+      "pattern": "^evd_[a-z2-7]{26}$",
+      "description": "Typed identifier: evd_ + base32(UUIDv7)."
+    },
+    "Execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ExecutionId"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "work_unit": {
+          "$ref": "#/$defs/WorkUnitId"
+        },
+        "actor": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "harness": {
+          "type": "string"
+        },
+        "worker": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkerInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/ExecutionState"
+        },
+        "allowed_resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceSelector"
+          }
+        },
+        "allowed_effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExtensionRef"
+          }
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "budget": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "max_attempts": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "attempt": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "retry_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lease": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lease"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EffectId"
+          }
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObservationId"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "pack",
+        "generation",
+        "work_unit",
+        "actor",
+        "provider",
+        "harness",
+        "state",
+        "timeout_ms",
+        "max_attempts",
+        "attempt",
+        "idempotency_key",
+        "request_id",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "ExecutionId": {
+      "type": "string",
+      "pattern": "^exe_[a-z2-7]{26}$",
+      "description": "Typed identifier: exe_ + base32(UUIDv7)."
+    },
+    "ExecutionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "expected_generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "work_unit": {
+          "$ref": "#/$defs/WorkUnitId"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "harness": {
+          "type": "string"
+        },
+        "worker": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkerInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allowed_resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceSelector"
+          }
+        },
+        "allowed_effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "budget": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "max_attempts": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "retry_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "pack",
+        "expected_generation",
+        "work_unit",
+        "provider",
+        "harness",
+        "timeout_ms",
+        "max_attempts",
+        "idempotency_key"
+      ],
+      "description": "Execution admission request (spec/execution.md §ExecutionRequest)."
+    },
+    "ExecutionState": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "ADMITTED",
+        "STARTING",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "LOST"
+      ]
+    },
+    "Expr": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expr"
+              }
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expr"
+              }
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Expr"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "eq": {
+              "$ref": "#/$defs/FactCompare"
+            }
+          },
+          "required": [
+            "eq"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ne": {
+              "$ref": "#/$defs/FactCompare"
+            }
+          },
+          "required": [
+            "ne"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lt": {
+              "$ref": "#/$defs/IntCompare"
+            }
+          },
+          "required": [
+            "lt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "le": {
+              "$ref": "#/$defs/IntCompare"
+            }
+          },
+          "required": [
+            "le"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "gt": {
+              "$ref": "#/$defs/IntCompare"
+            }
+          },
+          "required": [
+            "gt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ge": {
+              "$ref": "#/$defs/IntCompare"
+            }
+          },
+          "required": [
+            "ge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "in": {
+              "$ref": "#/$defs/FactIn"
+            }
+          },
+          "required": [
+            "in"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contains": {
+              "$ref": "#/$defs/FactContains"
+            }
+          },
+          "required": [
+            "contains"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "exists": {
+              "$ref": "#/$defs/FactName"
+            }
+          },
+          "required": [
+            "exists"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "verifier": {
+              "$ref": "#/$defs/VerifierCondition"
+            }
+          },
+          "required": [
+            "verifier"
+          ],
+          "additionalProperties": false,
+          "description": "Latest candidate-bound verification of `kind` has `status`."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "evaluator": {
+              "$ref": "#/$defs/EvaluatorCondition"
+            }
+          },
+          "required": [
+            "evaluator"
+          ],
+          "additionalProperties": false,
+          "description": "Latest candidate-bound evaluation of `kind` has `verdict`."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "evidence": {
+              "$ref": "#/$defs/EvidenceCondition"
+            }
+          },
+          "required": [
+            "evidence"
+          ],
+          "additionalProperties": false,
+          "description": "At least one candidate-bound evidence object of `kind` exists."
+        }
+      ],
+      "description": "Policy expression. JSON form is a single-key object naming the operator."
+    },
+    "ExtensionErrorInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "extension_id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "extension_id",
+        "code",
+        "message"
+      ],
+      "description": "Error reported by an extension, nested inside `EXTENSION_FAILED`/`EXTENSION_INCOMPATIBLE`."
+    },
+    "ExtensionManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Reverse-DNS stable identifier, e.g. `org.openaevc.reference.kv`."
+        },
+        "version": {
+          "type": "string",
+          "description": "SemVer of the extension implementation."
+        },
+        "protocol": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "contract": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "publisher": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest",
+          "description": "SHA-256 of the extension executable/artifact."
+        },
+        "resource_kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceKindDecl"
+          }
+        },
+        "effect_kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EffectKindDecl"
+          }
+        },
+        "verifier_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evaluator_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "composition_validators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "host_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HostCapability"
+          }
+        },
+        "schemas": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "execution_modes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entrypoint": {
+          "$ref": "#/$defs/Entrypoint"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "protocol",
+        "contract",
+        "artifact_digest",
+        "execution_modes",
+        "entrypoint"
+      ]
+    },
+    "ExtensionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "manifest_digest"
+      ],
+      "description": "Registered extension identity bound into provenance and promoted objects."
+    },
+    "FactCompare": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/FactValue"
+        }
+      },
+      "required": [
+        "fact",
+        "value"
+      ]
+    },
+    "FactContains": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact",
+        "value"
+      ]
+    },
+    "FactIn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FactValue"
+          }
+        }
+      },
+      "required": [
+        "fact",
+        "values"
+      ]
+    },
+    "FactName": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact"
+      ]
+    },
+    "FactValue": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "description": "Normalized fact value consumed by policy (spec/policy.md). Untagged in JSON."
+    },
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResourceRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "GrantBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/GrantId"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "issuer": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "subject": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed actions: exact names, `*`, or `prefix.*`."
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceSelector"
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "not_before": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "delegation_depth": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "nonce": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "issuer",
+        "subject",
+        "actions",
+        "not_before",
+        "expires_at",
+        "delegation_depth",
+        "nonce"
+      ],
+      "description": "Unsigned body of a capability grant (spec/capabilities.md)."
+    },
+    "GrantId": {
+      "type": "string",
+      "pattern": "^grt_[a-z2-7]{26}$",
+      "description": "Typed identifier: grt_ + base32(UUIDv7)."
+    },
+    "HostCapability": {
+      "type": "string",
+      "enum": [
+        "resource.read",
+        "resource.write",
+        "process.execute",
+        "network.connect",
+        "secret.read",
+        "clock.read",
+        "entropy.read"
+      ],
+      "description": "Privileged operations an extension may request through structured host calls.\nDeclarations in a manifest are requests; the runtime grants per invocation."
+    },
+    "ImplementationInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "IntCompare": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "fact",
+        "value"
+      ]
+    },
+    "JournalCheckpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "event_hash": {
+          "$ref": "#/$defs/Digest"
+        },
+        "runtime_key": {
+          "$ref": "#/$defs/PublicKey"
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "sequence",
+        "event_hash",
+        "runtime_key",
+        "runtime_instance",
+        "created_at"
+      ]
+    },
+    "Lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/LeaseId"
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "provider": {
+          "type": "string"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "heartbeat_interval_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "execution",
+        "generation",
+        "provider",
+        "expires_at",
+        "heartbeat_interval_ms"
+      ]
+    },
+    "LeaseId": {
+      "type": "string",
+      "pattern": "^lse_[a-z2-7]{26}$",
+      "description": "Typed identifier: lse_ + base32(UUIDv7)."
+    },
+    "Namespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "root_principals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PrincipalId"
+          }
+        },
+        "mandatory_policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "description": "Mandatory promotion policies; every qualification evaluates all of them."
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "id",
+        "created_at",
+        "created_by",
+        "root_principals"
+      ]
+    },
+    "NamespaceId": {
+      "type": "string",
+      "pattern": "^ns_[a-z2-7]{26}$",
+      "description": "Typed identifier: ns_ + base32(UUIDv7)."
+    },
+    "NewPrincipal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/PrincipalKind"
+        },
+        "public_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "linked_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "description": "New principal description used by `CreateNamespace` and `RegisterPrincipal`."
+    },
+    "NodeRef": {
+      "type": "string",
+      "pattern": "^([a-z]{2,3}_[a-z2-7]{26}|sha256:[0-9a-f]{64})$",
+      "description": "Active Change Graph node: typed identifier or object digest."
+    },
+    "ObjectEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ObjectKind"
+        },
+        "protocol_version": {
+          "$ref": "#/$defs/ProtocolVersion"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_seq": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "description": "Namespace event sequence of the event that created the object."
+        },
+        "creator": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "body": true,
+        "signatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignatureEntry"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "protocol_version",
+        "namespace",
+        "created_seq",
+        "creator",
+        "body"
+      ]
+    },
+    "ObjectKind": {
+      "type": "string",
+      "enum": [
+        "blob",
+        "capability_grant",
+        "revocation",
+        "policy_document",
+        "policy_decision",
+        "extension_manifest",
+        "candidate",
+        "observation",
+        "evidence",
+        "verification_result",
+        "evaluation_result",
+        "promoted_pack",
+        "promotion_record",
+        "receipt",
+        "baseline",
+        "journal_checkpoint"
+      ]
+    },
+    "Observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ObservationId"
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "work_unit": {
+          "$ref": "#/$defs/WorkUnitId"
+        },
+        "producer": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "payload": true,
+        "blob": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "related_resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        },
+        "related_effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EffectId"
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "execution",
+        "pack",
+        "generation",
+        "work_unit",
+        "producer",
+        "observed_at",
+        "kind",
+        "provenance"
+      ]
+    },
+    "ObservationId": {
+      "type": "string",
+      "pattern": "^obs_[a-z2-7]{26}$",
+      "description": "Typed identifier: obs_ + base32(UUIDv7)."
+    },
+    "PackId": {
+      "type": "string",
+      "pattern": "^(cpk|rpk)_[a-z2-7]{26}$",
+      "description": "ChangePack or RevisionPack identifier."
+    },
+    "PackSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intent": true,
+        "resource_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        },
+        "required_policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "extension_bindings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicts_with": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "description": "Descriptive fields shared by `CreateChangePack` and `CreateRevisionPack`."
+    },
+    "PackState": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "SEALED",
+        "QUALIFIED",
+        "PROMOTED",
+        "ABANDONED",
+        "QUARANTINED"
+      ]
+    },
+    "PolicyDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FactValue"
+          }
+        },
+        "outcome": {
+          "$ref": "#/$defs/DecisionOutcome"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleResult"
+          }
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "pack",
+        "generation",
+        "candidate",
+        "policies",
+        "outcome",
+        "rules",
+        "evaluated_at"
+      ],
+      "description": "Canonical result of evaluating policies over facts for one candidate."
+    },
+    "PolicyDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Namespaced policy name, e.g. `org.example.release-gates`."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PolicyRule"
+          },
+          "description": "All rules must hold for the document to allow."
+        }
+      },
+      "required": [
+        "name",
+        "rules"
+      ]
+    },
+    "PolicyRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "expr": {
+          "$ref": "#/$defs/Expr"
+        }
+      },
+      "required": [
+        "id",
+        "expr"
+      ]
+    },
+    "Principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "namespace": {
+          "$ref": "#/$defs/NamespaceId"
+        },
+        "kind": {
+          "$ref": "#/$defs/PrincipalKind"
+        },
+        "public_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "linked_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "registered_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "namespace",
+        "kind",
+        "registered_at"
+      ],
+      "description": "A registered principal. KEY/RUNTIME/SERVICE principals authenticate with their key; an\nACTOR has no key and is acted as by the key principal it is linked to."
+    },
+    "PrincipalId": {
+      "type": "string",
+      "pattern": "^pri_[a-z2-7]{26}$",
+      "description": "Typed identifier: pri_ + base32(UUIDv7)."
+    },
+    "PrincipalKind": {
+      "type": "string",
+      "enum": [
+        "KEY",
+        "RUNTIME",
+        "SERVICE",
+        "ACTOR"
+      ]
+    },
+    "PromotedPack": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EffectSummary"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "description": "PromotedPack digests this pack requires."
+        },
+        "conflicts_with": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RevisionInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "policy_decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "promotion_record": {
+          "$ref": "#/$defs/Digest"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExtensionRef"
+          }
+        },
+        "intent": true,
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "provenance_root": {
+          "$ref": "#/$defs/Digest",
+          "description": "Digest of the canonical list of the candidate effects' provenance records."
+        }
+      },
+      "required": [
+        "pack",
+        "generation",
+        "candidate",
+        "effects",
+        "policy_decisions",
+        "promotion_record",
+        "provenance_root"
+      ],
+      "description": "Immutable accepted snapshot of a promoted ChangePack or RevisionPack."
+    },
+    "PromotionId": {
+      "type": "string",
+      "pattern": "^pro_[a-z2-7]{26}$",
+      "description": "Typed identifier: pro_ + base32(UUIDv7)."
+    },
+    "PromotionInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "promoted_pack": {
+          "$ref": "#/$defs/Digest"
+        },
+        "promotion_record": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "promoted_pack",
+        "promotion_record"
+      ]
+    },
+    "PromotionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/PromotionId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "policy_decision": {
+          "$ref": "#/$defs/Digest"
+        },
+        "promoted_by": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "promoted_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        }
+      },
+      "required": [
+        "id",
+        "pack",
+        "generation",
+        "candidate",
+        "policy_decision",
+        "promoted_by",
+        "promoted_at",
+        "request_id"
+      ]
+    },
+    "ProtocolError": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "category": {
+          "$ref": "#/$defs/ErrorCategory"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "object_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expected_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "actual_generation": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "missing_action": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "transition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TransitionInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extension_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtensionErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cycle": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "For `DEPENDENCY_CYCLE`: the minimal cycle, first node repeated at the end."
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message",
+        "retryable"
+      ]
+    },
+    "ProtocolVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "description": "MAJOR.MINOR.PATCH protocol version."
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "caller": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "worker": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "type": "string"
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtensionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "execution": {
+          "$ref": "#/$defs/ExecutionId"
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        }
+      },
+      "required": [
+        "actor",
+        "caller",
+        "provider",
+        "harness",
+        "request_id",
+        "pack",
+        "generation",
+        "execution",
+        "runtime_instance"
+      ],
+      "description": "Minimum provenance of an execution-affecting artifact (spec/observations.md)."
+    },
+    "ProviderDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "worker_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "harnesses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cancellation": {
+          "type": "boolean"
+        },
+        "resumable": {
+          "type": "boolean"
+        },
+        "heartbeat": {
+          "type": "boolean"
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "provenance_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "principal": {
+          "$ref": "#/$defs/PrincipalId",
+          "description": "Principal that speaks for the provider (heartbeats, recovery proofs)."
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "worker_kinds",
+        "harnesses",
+        "cancellation",
+        "resumable",
+        "heartbeat",
+        "principal"
+      ],
+      "description": "Registered execution provider (spec/execution.md §Provider contract)."
+    },
+    "PublicKey": {
+      "type": "string",
+      "pattern": "^ed25519:[A-Za-z0-9_-]{43}$",
+      "description": "Ed25519 public key, unpadded base64url."
+    },
+    "QualificationInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "decision": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "generation",
+        "candidate",
+        "decision"
+      ]
+    },
+    "QuarantineInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previous_state": {
+          "$ref": "#/$defs/PackState"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "by": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "previous_state",
+        "reason",
+        "by",
+        "at"
+      ]
+    },
+    "Query": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "GetRuntimeInfo"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "GetNamespace"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "principal": {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetPrincipal"
+            }
+          },
+          "required": [
+            "type",
+            "principal"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "grant": {
+              "$ref": "#/$defs/GrantId"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetGrant"
+            }
+          },
+          "required": [
+            "type",
+            "grant"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "principal": {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            "action": {
+              "type": "string"
+            },
+            "resource": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ResourceRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "Authorize"
+            }
+          },
+          "required": [
+            "type",
+            "principal",
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "GetChangePack"
+            }
+          },
+          "required": [
+            "type",
+            "pack"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "$ref": "#/$defs/PackId"
+            },
+            "generation": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "GetRevisionPack"
+            }
+          },
+          "required": [
+            "type",
+            "pack"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PackId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "GetActiveChangeGraph"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "node": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetNode"
+            }
+          },
+          "required": [
+            "type",
+            "node"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "node": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "reverse": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetDependencyClosure"
+            }
+          },
+          "required": [
+            "type",
+            "node"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "node": {
+              "$ref": "#/$defs/NodeRef"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetAffectedNodes"
+            }
+          },
+          "required": [
+            "type",
+            "node"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PackId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "GetReadyWork"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PackId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "GetBlockedWork"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/ExecutionId"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetExecution"
+            }
+          },
+          "required": [
+            "type",
+            "execution"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PackId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ExecutionState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "ListExecutions"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetEvidence"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetVerification"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetEvaluation"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetPolicyDecision"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pack": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PackId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "GetPromotedPack"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {
+              "$ref": "#/$defs/BaselineId"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetBaseline"
+            }
+          },
+          "required": [
+            "type",
+            "baseline"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "ValidateBaseline"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baseline": {
+              "$ref": "#/$defs/BaselineId"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetBaselineClosure"
+            }
+          },
+          "required": [
+            "type",
+            "baseline"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetObjectClosure"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetPackClosure"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "type": "string",
+              "const": "GetObject"
+            }
+          },
+          "required": [
+            "type",
+            "digest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "HasObject"
+            }
+          },
+          "required": [
+            "type",
+            "digests"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "digests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Digest"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "ComputeMissingObjects"
+            }
+          },
+          "required": [
+            "type",
+            "digests"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ObjectKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "ListObjectDigests"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0,
+              "default": 0
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "ListEvents"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "GetJournalCheckpoint"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "ListExtensions"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "QueryEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol_version": {
+          "$ref": "#/$defs/ProtocolVersion"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "namespace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NamespaceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "caller": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "act_as": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "ACTOR principal linked to `caller` on whose behalf the request is made."
+        },
+        "nonce": {
+          "type": "string"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "body": {
+          "$ref": "#/$defs/Query"
+        },
+        "signature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Signature"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "protocol_version",
+        "request_id",
+        "caller",
+        "nonce",
+        "issued_at",
+        "body"
+      ],
+      "description": "Signed request envelope. The signature covers the canonical encoding of the envelope with\n`signature` omitted, in the `request` signature domain."
+    },
+    "Receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "command": {
+          "type": "string"
+        },
+        "caller": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "envelope_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "result": {
+          "$ref": "#/$defs/CommandResult"
+        },
+        "first_seq": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "last_seq": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        },
+        "completed_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "request_id",
+        "command",
+        "caller",
+        "envelope_digest",
+        "result",
+        "first_seq",
+        "last_seq",
+        "runtime_instance",
+        "completed_at"
+      ],
+      "description": "Canonical command receipt, signed by the runtime key."
+    },
+    "RequestId": {
+      "type": "string",
+      "pattern": "^req_[a-z2-7]{26}$",
+      "description": "Typed identifier: req_ + base32(UUIDv7)."
+    },
+    "ResourceKindDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "ResourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extension": {
+          "type": "string",
+          "description": "Extension responsible for interpreting this resource kind."
+        }
+      },
+      "required": [
+        "kind",
+        "locator",
+        "extension"
+      ],
+      "description": "Address of a domain resource. The locator is opaque to the runtime and interpreted by the\nowning extension. Resources are always scoped to the Namespace of the object holding them."
+    },
+    "ResourceSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "locator_prefix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "description": "Selects resources a grant applies to. `kind` is an exact kind, `*`, or a `prefix.*`\npattern; `locator_prefix` further restricts locators."
+    },
+    "RevisionInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "relation": {
+          "$ref": "#/$defs/RevisionRelation"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "description": "Digests of the target PromotedPack objects."
+        }
+      },
+      "required": [
+        "relation",
+        "targets"
+      ]
+    },
+    "RevisionRelation": {
+      "type": "string",
+      "enum": [
+        "AMENDS",
+        "SUPERSEDES",
+        "REVERTS"
+      ]
+    },
+    "Revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "grant": {
+          "$ref": "#/$defs/GrantId"
+        },
+        "grant_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "revoked_by": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "revoked_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "grant",
+        "grant_digest",
+        "revoked_by",
+        "revoked_at"
+      ]
+    },
+    "RuleResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/Digest"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "policy",
+        "rule",
+        "passed"
+      ]
+    },
+    "RunProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "caller": {
+          "$ref": "#/$defs/PrincipalId"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        }
+      },
+      "required": [
+        "caller",
+        "request_id",
+        "runtime_instance"
+      ],
+      "description": "Who ran a verification/evaluation and in which request."
+    },
+    "RuntimeInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "contract": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "implementation": {
+          "$ref": "#/$defs/ImplementationInfo"
+        },
+        "runtime_instance": {
+          "$ref": "#/$defs/RuntimeInstanceId"
+        },
+        "runtime_key": {
+          "$ref": "#/$defs/PublicKey"
+        },
+        "replay_window_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "protocol",
+        "contract",
+        "implementation",
+        "runtime_instance",
+        "runtime_key",
+        "replay_window_ms"
+      ],
+      "description": "Answer to `GetRuntimeInfo` and `GET /v1/info`."
+    },
+    "RuntimeInstanceId": {
+      "type": "string",
+      "pattern": "^rti_[a-z2-7]{26}$",
+      "description": "Typed identifier: rti_ + base32(UUIDv7)."
+    },
+    "SchemaRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ]
+    },
+    "SealInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "sealed_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "generation",
+        "candidate",
+        "sealed_at"
+      ]
+    },
+    "Signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{86}$",
+      "description": "Ed25519 signature, unpadded base64url."
+    },
+    "SignatureEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public_key": {
+          "$ref": "#/$defs/PublicKey"
+        },
+        "signature": {
+          "$ref": "#/$defs/Signature"
+        }
+      },
+      "required": [
+        "public_key",
+        "signature"
+      ],
+      "description": "One signature over an object or envelope, with the key that produced it."
+    },
+    "SignedGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/GrantBody"
+        },
+        "signature": {
+          "$ref": "#/$defs/Signature"
+        }
+      },
+      "required": [
+        "body",
+        "signature"
+      ],
+      "description": "A grant plus the issuer's Ed25519 signature over `canonical(body)` in the `grant` domain."
+    },
+    "Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$",
+      "description": "RFC 3339 UTC timestamp; canonical output has nine fraction digits."
+    },
+    "TransitionInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "description": "A lifecycle transition that was refused."
+    },
+    "VerificationId": {
+      "type": "string",
+      "pattern": "^vrf_[a-z2-7]{26}$",
+      "description": "Typed identifier: vrf_ + base32(UUIDv7)."
+    },
+    "VerificationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/VerificationId"
+        },
+        "pack": {
+          "$ref": "#/$defs/PackId"
+        },
+        "generation": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "candidate": {
+          "$ref": "#/$defs/Digest"
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtensionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config": true,
+        "status": {
+          "$ref": "#/$defs/VerificationStatus"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FactValue"
+          }
+        },
+        "started_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "finished_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "provenance": {
+          "$ref": "#/$defs/RunProvenance"
+        }
+      },
+      "required": [
+        "id",
+        "pack",
+        "generation",
+        "candidate",
+        "verifier",
+        "status",
+        "started_at",
+        "finished_at",
+        "provenance"
+      ]
+    },
+    "VerificationStatus": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE",
+        "ERROR"
+      ]
+    },
+    "VerifierCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/VerificationStatus"
+        }
+      },
+      "required": [
+        "kind",
+        "status"
+      ]
+    },
+    "VersionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/ProtocolVersion"
+        },
+        "max": {
+          "$ref": "#/$defs/ProtocolVersion"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "description": "Inclusive range of protocol versions."
+    },
+    "WorkUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/WorkUnitId"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "spec": true,
+        "state": {
+          "$ref": "#/$defs/WorkUnitState"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "state"
+      ],
+      "description": "Generic unit of work. Products may present it as a task, job, action or assignment."
+    },
+    "WorkUnitId": {
+      "type": "string",
+      "pattern": "^wku_[a-z2-7]{26}$",
+      "description": "Typed identifier: wku_ + base32(UUIDv7)."
+    },
+    "WorkUnitState": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "COMPLETED",
+        "CANCELLED"
+      ]
+    },
+    "WorkerInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ]
+    }
+  }
+}

@@ -406,9 +406,9 @@ pub fn fresh<T: openaevc_core::FromUuid>() -> T {
 
 pub fn fixtures(name: &str) -> Result<Value, String> {
     let text = match name {
-        "values" => include_str!("../../../fixtures/canonical/values.json"),
-        "objects" => include_str!("../../../fixtures/canonical/objects.json"),
-        "signatures" => include_str!("../../../fixtures/canonical/signatures.json"),
+        "values" => include_str!("../fixtures/values.json"),
+        "objects" => include_str!("../fixtures/objects.json"),
+        "signatures" => include_str!("../fixtures/signatures.json"),
         _ => return Err(format!("unknown fixture {name}")),
     };
     serde_json::from_str(text).map_err(|e| e.to_string())

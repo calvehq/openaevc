@@ -15,6 +15,8 @@ libfuzzer-sys = "0.4"
 openaevc-protocol = { path = "../crates/openaevc-protocol" }
 openaevc-canonical = { path = "../crates/openaevc-canonical" }
 openaevc-core = { path = "../crates/openaevc-core" }
+openaevc-policy = { path = "../crates/openaevc-policy" }
+openaevc-extension-contract = { path = "../crates/openaevc-extension-contract" }
 serde_json = "1"
 
 [[bin]]
@@ -27,6 +29,27 @@ bench = false
 [[bin]]
 name = "protocol_envelopes"
 path = "fuzz_targets/protocol_envelopes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "object_from_bytes"
+path = "fuzz_targets/object_from_bytes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "policy_documents"
+path = "fuzz_targets/policy_documents.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extension_frames"
+path = "fuzz_targets/extension_frames.rs"
 test = false
 doc = false
 bench = false

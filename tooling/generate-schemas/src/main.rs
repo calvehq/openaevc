@@ -1,18 +1,18 @@
 //! `cargo run -p generate-schemas [-- --check]`
 //!
 //! Writes `schemas/json/openaevc.schema.json`, `schemas/cddl/openaevc.cddl` and
-//! `schemas/openapi/openapi.json`. With `--check`, fails if the checked-in files differ.
+//! `schemas/openapi/openapi.json` (plus the copy embedded by `openaevc-inspect`). With `--check`, fails if the checked-in files differ.
 
 use generate_schemas::{cddl, json_schema, root};
 
 fn main() {
     let check = std::env::args().any(|a| a == "--check");
     let schema = json_schema();
+    let json = serde_json::to_string_pretty(&schema).unwrap() + "\n";
     let files = [
-        (
-            "schemas/json/openaevc.schema.json",
-            serde_json::to_string_pretty(&schema).unwrap() + "\n",
-        ),
+        ("schemas/json/openaevc.schema.json", json.clone()),
+        // Package-local copy so the published `openaevc-inspect` crate is self-contained.
+        ("bins/openaevc-inspect/openaevc.schema.json", json),
         ("schemas/cddl/openaevc.cddl", cddl(&schema)),
         (
             "schemas/openapi/openapi.json",
