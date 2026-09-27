@@ -238,8 +238,9 @@ pub(crate) fn invoke(
         program,
         args: rec.manifest.entrypoint.args.clone(),
     };
-    let result = host::invoke(&ep, &limits(tx), &rec.manifest, op, granted, &mut calls)
-        .map_err(|e| e.into_protocol(&rec.manifest.id))?;
+    let result = host::invoke(&ep, &limits(tx), &rec.manifest, op, granted, &mut calls);
+    tx.rt.metrics.extension(result.is_ok());
+    let result = result.map_err(|e| e.into_protocol(&rec.manifest.id))?;
     Ok((result.output, calls.collected, rec.reference()))
 }
 

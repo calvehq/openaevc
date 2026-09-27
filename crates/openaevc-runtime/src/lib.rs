@@ -12,6 +12,7 @@
 
 mod ext;
 mod handlers;
+mod metrics;
 mod queries;
 mod records;
 mod recovery;
@@ -27,9 +28,9 @@ use openaevc_core::{Clock, IdGenerator, IdGeneratorExt, ImmutableObject};
 use openaevc_crypto::Signer;
 use openaevc_protocol::{
     err, Command, CommandEnvelope, CommandReceipt, CommandResult, Digest, Envelope, ErrorCode,
-    ImplementationInfo, JournalCheckpoint, Namespace, NamespaceId, ObjectKind, Principal,
-    PrincipalId, PrincipalKind, ProtocolError, PublicKey, QueryEnvelope, Receipt, RequestId,
-    ResourceRef, RuntimeInfo, RuntimeInstanceId, SUPPORTED_CONTRACT, SUPPORTED_PROTOCOL,
+    Event, EventFilter, ImplementationInfo, JournalCheckpoint, Namespace, NamespaceId, ObjectKind,
+    Principal, PrincipalId, PrincipalKind, ProtocolError, PublicKey, Query, QueryEnvelope, Receipt,
+    RequestId, ResourceRef, RuntimeInfo, RuntimeInstanceId, SUPPORTED_CONTRACT, SUPPORTED_PROTOCOL,
 };
 use openaevc_store::{RequestRecord, Store};
 use serde::Serialize;
@@ -37,6 +38,8 @@ use serde_json::Value;
 
 use crate::tx::Tx;
 use crate::view::NsView;
+
+pub use metrics::Metrics;
 
 pub type Result<T> = std::result::Result<T, ProtocolError>;
 
@@ -112,6 +115,7 @@ pub(crate) struct Shared {
     pub instance: RuntimeInstanceId,
     pub config: RuntimeConfig,
     pub notify: tokio::sync::watch::Sender<u64>,
+    pub metrics: Metrics,
 }
 
 /// Authenticated request context handed to handlers.
@@ -123,6 +127,29 @@ pub(crate) struct Ctx {
     pub caller: PrincipalId,
     pub roots: Vec<PrincipalId>,
     pub request_id: RequestId,
+}
+
+/// Authenticated event subscription (see [`Runtime::subscribe`]).
+#[derive(Debug, Clone)]
+pub struct Subscription {
+    filter: EventFilter,
+    ctx: Ctx,
+}
+
+impl Subscription {
+    /// Sequence of the last event examined.
+    pub fn cursor(&self) -> openaevc_protocol::Sequence {
+        self.filter.after
+    }
+
+    pub fn namespace(&self) -> NamespaceId {
+        self.filter.namespace
+    }
+
+    /// Resume point, e.g. from an SSE `Last-Event-ID`.
+    pub fn set_cursor(&mut self, after: openaevc_protocol::Sequence) {
+        self.filter.after = after;
+    }
 }
 
 pub struct Runtime {
@@ -158,6 +185,7 @@ impl Runtime {
             runtime_principal: deps.runtime_principal,
             config,
             notify: tokio::sync::watch::channel(0).0,
+            metrics: Metrics::default(),
         };
         let rt = Runtime {
             shared,
@@ -289,6 +317,46 @@ impl Runtime {
 
     /// Executes a signed command envelope.
     pub fn execute(&self, env: CommandEnvelope) -> Result<CommandReceipt> {
+        self.execute_inner(env, None)
+    }
+
+    /// Executes a `PutImmutableObject` whose signed envelope carries an empty `bytes` field and
+    /// whose object bytes travel separately (e.g. an HTTP `PUT /v1/objects/{digest}` body). The
+    /// signature covers the digest; the bytes are verified against it.
+    pub fn execute_with_payload(
+        &self,
+        env: CommandEnvelope,
+        payload: Vec<u8>,
+    ) -> Result<CommandReceipt> {
+        match &env.body {
+            Command::PutImmutableObject { bytes, .. } if bytes.is_empty() => self.execute_inner(env, Some(payload)),
+            _ => Err(err::invalid("a separate payload is only accepted for PutImmutableObject with empty inline bytes")),
+        }
+    }
+
+    /// Runtime counters.
+    pub fn metrics(&self) -> &Metrics {
+        &self.shared.metrics
+    }
+
+    fn execute_inner(
+        &self,
+        env: CommandEnvelope,
+        payload: Option<Vec<u8>>,
+    ) -> Result<CommandReceipt> {
+        let name = env.body.name();
+        let r = self.execute_locked(env, payload);
+        self.shared
+            .metrics
+            .command(name, r.as_ref().map_or_else(|e| e.code.as_str(), |_| "ok"));
+        r
+    }
+
+    fn execute_locked(
+        &self,
+        env: CommandEnvelope,
+        payload: Option<Vec<u8>>,
+    ) -> Result<CommandReceipt> {
         let _g = self.guard()?;
         Self::check_version(&env)?;
         let digest = envelope_digest(&env)?;
@@ -304,7 +372,13 @@ impl Runtime {
         tx.request_id = Some(env.request_id);
         tx.actor = Some(ctx.principal);
         let name = env.body.name();
-        match handlers::dispatch(&mut tx, &ctx, env.body.clone()) {
+        let body = match (env.body.clone(), payload) {
+            (Command::PutImmutableObject { digest, .. }, Some(bytes)) => {
+                Command::PutImmutableObject { digest, bytes }
+            }
+            (body, _) => body,
+        };
+        match handlers::dispatch(&mut tx, &ctx, body) {
             Ok(result) => self.commit(tx, &env, name, digest, result),
             Err(e) => {
                 if is_authority_error(e.code) && self.shared.config.audit_denials {
@@ -434,6 +508,7 @@ impl Runtime {
         command: &str,
         e: &ProtocolError,
     ) -> Result<()> {
+        self.shared.metrics.denial();
         let mut tx = Tx::new(&self.shared, ns, ctx.principal)?;
         tx.request_id = Some(ctx.request_id);
         tx.actor = Some(ctx.principal);
@@ -452,6 +527,7 @@ impl Runtime {
     /// Executes a signed query envelope. Queries never mutate state.
     pub fn query(&self, env: QueryEnvelope) -> Result<Value> {
         let _g = self.guard()?;
+        self.shared.metrics.query();
         Self::check_version(&env)?;
         let (ns, ctx) = self.authenticate(&env)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
@@ -463,6 +539,63 @@ impl Runtime {
             }
         }
         r
+    }
+
+    /// Opens a long-lived event subscription. The envelope must be a signed `ListEvents` query;
+    /// it is authenticated once, and `namespace.read` is re-authorized on every poll so
+    /// revocation ends the subscription.
+    pub fn subscribe(&self, env: QueryEnvelope, subjects: Vec<String>) -> Result<Subscription> {
+        let _g = self.guard()?;
+        Self::check_version(&env)?;
+        let Query::ListEvents { after, kinds, .. } = env.body.clone() else {
+            return Err(err::invalid(
+                "subscriptions are opened with a ListEvents query envelope",
+            ));
+        };
+        let (ns, ctx) = self.authenticate(&env)?;
+        let tx = Tx::new(&self.shared, ns, ctx.principal)?;
+        authz(&tx, &ctx, "namespace.read", None)?;
+        Ok(Subscription {
+            filter: EventFilter {
+                namespace: ns,
+                after,
+                kinds,
+                subjects,
+            },
+            ctx,
+        })
+    }
+
+    /// Returns up to `limit` new matching events and advances the subscription cursor.
+    pub fn poll(&self, sub: &mut Subscription, limit: usize) -> Result<Vec<Event>> {
+        let _g = self.guard()?;
+        let ns = sub.filter.namespace;
+        let tx = Tx::new(&self.shared, ns, sub.ctx.principal)?;
+        authz(&tx, &sub.ctx, "namespace.read", None)?;
+        let mut out = Vec::new();
+        loop {
+            let page = self
+                .shared
+                .store
+                .read_events(&ns, sub.filter.after, limit.max(1))?;
+            let Some(last) = page.last().map(|e| e.sequence) else {
+                break;
+            };
+            for e in page {
+                if out.len() == limit {
+                    return Ok(out);
+                }
+                let seq = e.sequence;
+                if sub.filter.matches(&e) {
+                    out.push(e);
+                }
+                sub.filter.after = seq;
+            }
+            if sub.filter.after < last {
+                break;
+            }
+        }
+        Ok(out)
     }
 
     /// Recovery/maintenance tick: expires execution leases in every Namespace. The daemon calls
