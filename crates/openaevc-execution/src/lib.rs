@@ -350,7 +350,8 @@ mod tests {
 
     #[test]
     fn admission_rejections_in_order() {
-        let cases: Vec<(Box<dyn Fn(&mut AdmissionFacts)>, ErrorCode)> = vec![
+        type Mutation = Box<dyn Fn(&mut AdmissionFacts)>;
+        let cases: Vec<(Mutation, ErrorCode)> = vec![
             (
                 Box::new(|f| f.pack_state = PackState::Sealed),
                 ErrorCode::InvalidTransition,
