@@ -262,6 +262,15 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             };
             typed_object(tx, ctx, d, openaevc_protocol::ObjectKind::PromotedPack)
         }
+        GetBaseline { baseline } => {
+            read(tx)?;
+            let d = handlers::baseline::digest_of_id(tx, baseline)?;
+            typed_object(tx, ctx, d, openaevc_protocol::ObjectKind::Baseline)
+        }
+        ValidateBaseline { digest } => {
+            authz(tx, ctx, "object.read", None)?;
+            handlers::baseline::validate(tx, digest)
+        }
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()

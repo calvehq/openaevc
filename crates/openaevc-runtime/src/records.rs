@@ -22,6 +22,7 @@ pub(crate) const ACTIVE_EXECUTIONS: &str = "active_exe";
 pub(crate) const EXECUTION_IDEMPOTENCY: &str = "exe_idem";
 /// Evidence / verification / evaluation / decision index per pack.
 pub(crate) const PACK_RESULTS: &str = "pack_results";
+pub(crate) const BASELINE: &str = "baseline";
 
 pub(crate) fn generation_key(
     ns: &NamespaceId,
