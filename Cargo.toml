@@ -6,6 +6,7 @@ members = [
     "crates/openaevc-crypto",
     "crates/openaevc-core",
     "crates/openaevc-authority",
+    "crates/openaevc-policy",
     "crates/openaevc-store",
     "crates/openaevc-runtime",
     "crates/openaevc-testkit",
@@ -42,6 +43,7 @@ openaevc-crypto = { path = "crates/openaevc-crypto", version = "0.1.0" }
 openaevc-core = { path = "crates/openaevc-core", version = "0.1.0" }
 openaevc-authority = { path = "crates/openaevc-authority", version = "0.1.0" }
 openaevc-store = { path = "crates/openaevc-store", version = "0.1.0" }
+openaevc-policy = { path = "crates/openaevc-policy", version = "0.1.0" }
 openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"

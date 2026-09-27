@@ -427,6 +427,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-policy"
+version = "0.1.0"
+dependencies = [
+ "openaevc-core",
+ "openaevc-protocol",
+ "proptest",
+ "serde_json",
+]
+
+[[package]]
 name = "openaevc-protocol"
 version = "0.1.0"
 dependencies = [
@@ -446,6 +456,7 @@ dependencies = [
  "openaevc-canonical",
  "openaevc-core",
  "openaevc-crypto",
+ "openaevc-policy",
  "openaevc-protocol",
  "openaevc-store",
  "openaevc-testkit",
