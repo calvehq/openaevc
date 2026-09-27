@@ -427,6 +427,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-ext-conformance-fixtures"
+version = "0.1.0"
+dependencies = [
+ "openaevc-extension-contract",
+ "openaevc-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "openaevc-ext-reference-kv"
+version = "0.1.0"
+dependencies = [
+ "openaevc-extension-contract",
+ "openaevc-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "openaevc-ext-reference-null"
+version = "0.1.0"
+dependencies = [
+ "openaevc-extension-contract",
+ "openaevc-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "openaevc-extension-contract"
+version = "0.1.0"
+dependencies = [
+ "openaevc-canonical",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "openaevc-policy"
 version = "0.1.0"
 dependencies = [
@@ -456,6 +498,7 @@ dependencies = [
  "openaevc-canonical",
  "openaevc-core",
  "openaevc-crypto",
+ "openaevc-extension-contract",
  "openaevc-policy",
  "openaevc-protocol",
  "openaevc-store",
@@ -494,6 +537,7 @@ dependencies = [
  "openaevc-store",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

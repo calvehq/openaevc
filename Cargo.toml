@@ -7,9 +7,13 @@ members = [
     "crates/openaevc-core",
     "crates/openaevc-authority",
     "crates/openaevc-policy",
+    "crates/openaevc-extension-contract",
     "crates/openaevc-store",
     "crates/openaevc-runtime",
     "crates/openaevc-testkit",
+    "extensions/reference-null",
+    "extensions/reference-kv",
+    "extensions/conformance-fixtures",
     "tooling/generate-schemas",
     "tooling/fixture-builder",
 ]
@@ -44,6 +48,7 @@ openaevc-core = { path = "crates/openaevc-core", version = "0.1.0" }
 openaevc-authority = { path = "crates/openaevc-authority", version = "0.1.0" }
 openaevc-store = { path = "crates/openaevc-store", version = "0.1.0" }
 openaevc-policy = { path = "crates/openaevc-policy", version = "0.1.0" }
+openaevc-extension-contract = { path = "crates/openaevc-extension-contract", version = "0.1.0" }
 openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
@@ -55,3 +60,14 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 tempfile = "3"
 tokio = { version = "1", features = ["sync"] }
+
+# Hashing and signatures dominate test time in unoptimized builds (extensions hash their own
+# executables on every handshake).
+[profile.dev.package.sha2]
+opt-level = 3
+
+[profile.dev.package.ed25519-dalek]
+opt-level = 3
+
+[profile.dev.package.curve25519-dalek]
+opt-level = 3

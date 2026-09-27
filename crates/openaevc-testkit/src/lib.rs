@@ -355,3 +355,120 @@ impl Client<'_> {
         self.h.rt.query(self.query_envelope(q))
     }
 }
+
+/// Extension binaries installed into a private directory for one test.
+pub struct Extensions {
+    pub dir: tempfile::TempDir,
+}
+
+impl std::fmt::Debug for Extensions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Extensions")
+            .field("dir", &self.dir.path())
+            .finish()
+    }
+}
+
+pub const FIXTURE_MODES: &[&str] = &[
+    "well-behaved",
+    "undeclared-resource",
+    "undeclared-process",
+    "oversized",
+    "invalid-frame",
+    "wrong-digest",
+    "slow",
+    "incompatible",
+    "crash",
+    "probe",
+];
+
+/// Builds the extension packages once per test process and returns the target directory.
+fn built_extensions() -> &'static Path {
+    static DIR: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+        let status = std::process::Command::new(cargo)
+            .args([
+                "build",
+                "-q",
+                "-p",
+                "openaevc-ext-reference-kv",
+                "-p",
+                "openaevc-ext-reference-null",
+                "-p",
+                "openaevc-ext-conformance-fixtures",
+            ])
+            .status()
+            .expect("run cargo build for extensions");
+        assert!(status.success(), "building extensions failed");
+        // <target>/debug/deps/<test-binary> -> <target>/debug
+        let exe = std::env::current_exe().expect("current exe");
+        exe.parent()
+            .and_then(|p| p.parent())
+            .expect("target dir")
+            .to_path_buf()
+    })
+}
+
+impl Extensions {
+    /// Copies `openaevc-ext-reference-kv`, `openaevc-ext-reference-null` and every
+    /// `conformance-fixture-<mode>` into a fresh directory.
+    pub fn install() -> Self {
+        let target = built_extensions();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let exe = std::env::consts::EXE_SUFFIX;
+        for name in ["openaevc-ext-reference-kv", "openaevc-ext-reference-null"] {
+            std::fs::copy(
+                target.join(format!("{name}{exe}")),
+                dir.path().join(format!("{name}{exe}")),
+            )
+            .expect("copy extension");
+        }
+        for mode in FIXTURE_MODES {
+            std::fs::copy(
+                target.join(format!("openaevc-ext-conformance-fixtures{exe}")),
+                dir.path().join(format!("conformance-fixture-{mode}{exe}")),
+            )
+            .expect("copy fixture");
+        }
+        Extensions { dir }
+    }
+
+    /// Entrypoint name (relative to the extension directory) of an installed binary.
+    pub fn entrypoint(name: &str) -> String {
+        format!("{name}{}", std::env::consts::EXE_SUFFIX)
+    }
+
+    pub fn path(&self, name: &str) -> std::path::PathBuf {
+        self.dir.path().join(Self::entrypoint(name))
+    }
+
+    pub fn digest(&self, name: &str) -> Digest {
+        openaevc_crypto::sha256(&std::fs::read(self.path(name)).expect("read extension"))
+    }
+}
+
+impl Harness {
+    /// Harness whose runtime may register extensions from `ext.dir`.
+    pub fn with_extensions(ext: &Extensions) -> Self {
+        let dir = ext.dir.path().to_path_buf();
+        Self::with_config(move |c| c.extension_dirs = vec![dir])
+    }
+
+    /// Registers an installed extension (all requested host capabilities approved).
+    pub fn register_extension(
+        &self,
+        root: &Identity,
+        ns: NamespaceId,
+        ext: &Extensions,
+        name: &str,
+    ) -> CommandReceipt {
+        self.client(root, ns)
+            .cmd(Command::RegisterExtension {
+                entrypoint: Extensions::entrypoint(name),
+                artifact_digest: ext.digest(name),
+                approved_host_capabilities: HostCapability::ALL.to_vec(),
+            })
+            .expect("register extension")
+    }
+}

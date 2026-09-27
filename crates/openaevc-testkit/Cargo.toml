@@ -21,3 +21,4 @@ openaevc-store.workspace = true
 openaevc-runtime.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true

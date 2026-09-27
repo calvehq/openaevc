@@ -14,6 +14,8 @@ pub(crate) const EDGES: &str = "edges";
 pub(crate) const WORK_UNIT: &str = "wu";
 /// Active (non-terminal) execution per work unit.
 pub(crate) const WU_EXECUTION: &str = "wu_exec";
+pub(crate) const EXTENSION: &str = "extension";
+pub(crate) const PROVIDER: &str = "provider";
 
 pub(crate) fn generation_key(
     ns: &NamespaceId,
@@ -43,4 +45,25 @@ pub(crate) struct GrantRecord {
 pub(crate) struct CheckpointRecord {
     pub digest: Digest,
     pub sequence: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ExtensionRecord {
+    pub manifest: openaevc_protocol::ExtensionManifest,
+    pub manifest_digest: Digest,
+    /// Absolute path of the registered executable (never given to extensions or clients).
+    pub program: String,
+    pub approved: Vec<openaevc_protocol::HostCapability>,
+    pub active: bool,
+    pub registered_at: openaevc_protocol::Timestamp,
+}
+
+impl ExtensionRecord {
+    pub fn reference(&self) -> openaevc_protocol::ExtensionRef {
+        openaevc_protocol::ExtensionRef {
+            id: self.manifest.id.clone(),
+            version: self.manifest.version.clone(),
+            manifest_digest: self.manifest_digest,
+        }
+    }
 }
