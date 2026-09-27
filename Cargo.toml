@@ -13,7 +13,9 @@ members = [
     "crates/openaevc-composition",
     "crates/openaevc-store",
     "crates/openaevc-runtime",
+    "crates/openaevc-transport",
     "crates/openaevc-testkit",
+    "bins/openaevcd",
     "extensions/reference-null",
     "extensions/reference-kv",
     "extensions/conformance-fixtures",
@@ -56,6 +58,7 @@ openaevc-execution = { path = "crates/openaevc-execution", version = "0.1.0" }
 openaevc-verification = { path = "crates/openaevc-verification", version = "0.1.0" }
 openaevc-composition = { path = "crates/openaevc-composition", version = "0.1.0" }
 openaevc-runtime = { path = "crates/openaevc-runtime", version = "0.1.0" }
+openaevc-transport = { path = "crates/openaevc-transport", version = "0.1.0" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
 schemars = "1"
@@ -66,6 +69,19 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 tempfile = "3"
 tokio = { version = "1", features = ["sync"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "http2", "json", "tokio"] }
+hyper = { version = "1", features = ["client", "server", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["tokio", "server", "server-auto", "server-graceful", "service"] }
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pki-types = { version = "1", features = ["std"] }
+rcgen = "0.13"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+clap = { version = "4", features = ["derive", "env"] }
+toml = "0.8"
 
 # Hashing and signatures dominate test time in unoptimized builds (extensions hash their own
 # executables on every handshake).

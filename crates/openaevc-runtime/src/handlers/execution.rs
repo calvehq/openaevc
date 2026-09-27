@@ -798,6 +798,7 @@ pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<()> {
                 "execution.lost",
                 json!({"execution": id, "reason": "lease expired"}),
             )?;
+            tx.rt.metrics.lost(1);
             set_active(&mut tx, id, false, e.work_unit)?;
             save(&mut tx, &e)?;
         }
