@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    ActiveEdgeKind, BaselineId, Blob, CompositionEdge, Digest, EffectId, EffectProposal,
+    ActiveEdgeKind, BaselineId, Blob, CompositionEdge, Digest, EffectId, EffectProposal, EventId,
     ExecutionId, ExecutionState, GrantId, HostCapability, Lease, LeaseId, Metadata, NamespaceId,
     NewPrincipal, NodeRef, ObjectKind, PackId, PolicyDocument, PrincipalId, ProtocolVersion,
     ProviderDescriptor, PublicKey, RequestId, ResourceRef, ResourceSelector, RevisionRelation,
     RuntimeInstanceId, SchemaRef, Sequence, Signature, SignedGrant, Timestamp, VersionRange,
-    WorkUnitId, WorkUnitState, WorkerInfo, EventId,
+    WorkUnitId, WorkUnitState, WorkerInfo,
 };
 
 fn is_false(b: &bool) -> bool {
@@ -278,13 +278,48 @@ pub enum Command {
     PutImmutableObject {
         digest: Digest,
         #[serde(with = "crate::b64::serde_bytes")]
-    #[schemars(with = "String")]
+        #[schemars(with = "String")]
         bytes: Vec<u8>,
     },
 }
 
 impl Command {
-    pub const NAMES: &'static [&'static str] = &["CreateNamespace", "RegisterPrincipal", "IssueCapabilityGrant", "RevokeCapabilityGrant", "RegisterPolicy", "RegisterExtension", "UnregisterExtension", "RegisterProvider", "CreateChangePack", "CreateRevisionPack", "UpdateChangePack", "AddWorkUnit", "UpdateWorkUnit", "AddActiveDependency", "RemoveActiveDependency", "SealChangePack", "ReopenChangePack", "AbandonChangePack", "QuarantineChangePack", "ReleaseQuarantine", "StartExecution", "HeartbeatExecution", "CancelExecution", "SubmitEffectProposal", "AppendObservation", "CompleteExecution", "FailExecution", "RegisterEvidence", "RunVerification", "RunEvaluation", "RefreshQualification", "PromoteChangePack", "CreateBaseline", "PutImmutableObject"];
+    pub const NAMES: &'static [&'static str] = &[
+        "CreateNamespace",
+        "RegisterPrincipal",
+        "IssueCapabilityGrant",
+        "RevokeCapabilityGrant",
+        "RegisterPolicy",
+        "RegisterExtension",
+        "UnregisterExtension",
+        "RegisterProvider",
+        "CreateChangePack",
+        "CreateRevisionPack",
+        "UpdateChangePack",
+        "AddWorkUnit",
+        "UpdateWorkUnit",
+        "AddActiveDependency",
+        "RemoveActiveDependency",
+        "SealChangePack",
+        "ReopenChangePack",
+        "AbandonChangePack",
+        "QuarantineChangePack",
+        "ReleaseQuarantine",
+        "StartExecution",
+        "HeartbeatExecution",
+        "CancelExecution",
+        "SubmitEffectProposal",
+        "AppendObservation",
+        "CompleteExecution",
+        "FailExecution",
+        "RegisterEvidence",
+        "RunVerification",
+        "RunEvaluation",
+        "RefreshQualification",
+        "PromoteChangePack",
+        "CreateBaseline",
+        "PutImmutableObject",
+    ];
 
     pub fn name(&self) -> &'static str {
         match self {
@@ -448,7 +483,40 @@ pub enum Query {
 }
 
 impl Query {
-    pub const NAMES: &'static [&'static str] = &["GetRuntimeInfo", "GetNamespace", "GetPrincipal", "GetGrant", "Authorize", "GetChangePack", "GetRevisionPack", "GetActiveChangeGraph", "GetNode", "GetDependencyClosure", "GetAffectedNodes", "GetReadyWork", "GetBlockedWork", "GetExecution", "ListExecutions", "GetEvidence", "GetVerification", "GetEvaluation", "GetPolicyDecision", "GetPromotedPack", "GetBaseline", "ValidateBaseline", "GetBaselineClosure", "GetObjectClosure", "GetPackClosure", "GetObject", "HasObject", "ComputeMissingObjects", "ListObjectDigests", "ListEvents", "GetJournalCheckpoint", "ListExtensions"];
+    pub const NAMES: &'static [&'static str] = &[
+        "GetRuntimeInfo",
+        "GetNamespace",
+        "GetPrincipal",
+        "GetGrant",
+        "Authorize",
+        "GetChangePack",
+        "GetRevisionPack",
+        "GetActiveChangeGraph",
+        "GetNode",
+        "GetDependencyClosure",
+        "GetAffectedNodes",
+        "GetReadyWork",
+        "GetBlockedWork",
+        "GetExecution",
+        "ListExecutions",
+        "GetEvidence",
+        "GetVerification",
+        "GetEvaluation",
+        "GetPolicyDecision",
+        "GetPromotedPack",
+        "GetBaseline",
+        "ValidateBaseline",
+        "GetBaselineClosure",
+        "GetObjectClosure",
+        "GetPackClosure",
+        "GetObject",
+        "HasObject",
+        "ComputeMissingObjects",
+        "ListObjectDigests",
+        "ListEvents",
+        "GetJournalCheckpoint",
+        "ListExtensions",
+    ];
 
     pub fn name(&self) -> &'static str {
         match self {
@@ -649,7 +717,8 @@ mod tests {
 
     #[test]
     fn event_filter_defaults() {
-        let f: EventFilter = serde_json::from_value(json!({"namespace": "ns_agjdus24nvyadaareizuivlgo4"})).unwrap();
+        let f: EventFilter =
+            serde_json::from_value(json!({"namespace": "ns_agjdus24nvyadaareizuivlgo4"})).unwrap();
         assert_eq!(f.after, 0);
         assert!(f.kinds.is_empty());
     }

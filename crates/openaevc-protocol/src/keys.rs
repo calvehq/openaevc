@@ -98,7 +98,9 @@ fixed_b64!(PublicKey, 32, "ed25519:");
 fixed_b64!(Signature, 64, "");
 
 /// One signature over an object or envelope, with the key that produced it.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct SignatureEntry {
     pub public_key: PublicKey,

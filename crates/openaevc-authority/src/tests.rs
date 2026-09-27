@@ -31,7 +31,12 @@ impl AuthorityView for World {
         self.grants.get(digest).cloned()
     }
     fn grants_for_subject(&self, subject: &PrincipalId) -> Vec<(Digest, SignedGrant)> {
-        let mut v: Vec<_> = self.grants.iter().filter(|(_, g)| &g.body.subject == subject).map(|(d, g)| (*d, g.clone())).collect();
+        let mut v: Vec<_> = self
+            .grants
+            .iter()
+            .filter(|(_, g)| &g.body.subject == subject)
+            .map(|(d, g)| (*d, g.clone()))
+            .collect();
         v.sort_by_key(|(d, _)| *d);
         v
     }
@@ -65,15 +70,18 @@ impl World {
     fn key_principal(&mut self) -> PrincipalId {
         let id: PrincipalId = self.ids.next();
         let key = SigningKey::generate();
-        self.principals.insert(id, Principal {
+        self.principals.insert(
             id,
-            namespace: self.ns,
-            kind: PrincipalKind::Key,
-            public_key: Some(key.public_key()),
-            linked_to: None,
-            attributes: BTreeMap::new(),
-            registered_at: t(0),
-        });
+            Principal {
+                id,
+                namespace: self.ns,
+                kind: PrincipalKind::Key,
+                public_key: Some(key.public_key()),
+                linked_to: None,
+                attributes: BTreeMap::new(),
+                registered_at: t(0),
+            },
+        );
         self.keys.insert(id, key);
         id
     }
@@ -88,7 +96,10 @@ impl World {
             namespace: self.ns,
             issuer,
             subject,
-            actions: actions.iter().map(|s| s.to_string()).collect::<BTreeSet<_>>(),
+            actions: actions
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<BTreeSet<_>>(),
             resources: vec![],
             constraints: BTreeMap::new(),
             not_before: t(0),
@@ -111,12 +122,39 @@ impl World {
     }
 
     fn authz(&self, who: PrincipalId, action: &str) -> Result<Authorization, ProtocolError> {
-        authorize(self, self.now, &Request { principal: who, action, resource: None })
+        authorize(
+            self,
+            self.now,
+            &Request {
+                principal: who,
+                action,
+                resource: None,
+            },
+        )
     }
 
-    fn authz_res(&self, who: PrincipalId, action: &str, kind: &str, loc: &str) -> Result<Authorization, ProtocolError> {
-        let r = ResourceRef { kind: kind.into(), locator: loc.into(), version: None, extension: "org.x.y".into() };
-        authorize(self, self.now, &Request { principal: who, action, resource: Some(&r) })
+    fn authz_res(
+        &self,
+        who: PrincipalId,
+        action: &str,
+        kind: &str,
+        loc: &str,
+    ) -> Result<Authorization, ProtocolError> {
+        let r = ResourceRef {
+            kind: kind.into(),
+            locator: loc.into(),
+            version: None,
+            extension: "org.x.y".into(),
+        };
+        authorize(
+            self,
+            self.now,
+            &Request {
+                principal: who,
+                action,
+                resource: Some(&r),
+            },
+        )
     }
 }
 
@@ -145,7 +183,10 @@ fn root_issued_grant_allows_listed_actions_only() {
     let d = w.add(g);
     assert_eq!(w.authz(alice, "changepack.create").unwrap().grants, vec![d]);
     assert!(w.authz(alice, "execution.start").is_ok());
-    assert_eq!(w.authz(alice, "changepack.promote").unwrap_err().code, ErrorCode::Forbidden);
+    assert_eq!(
+        w.authz(alice, "changepack.promote").unwrap_err().code,
+        ErrorCode::Forbidden
+    );
 }
 
 #[test]
@@ -155,8 +196,14 @@ fn forged_signature_rejected() {
     let mut g = w.sign(w.body(w.root(), alice, &["*"]));
     g.body.actions.insert("grant.issue".into());
     w.add(g.clone());
-    assert_eq!(w.authz(alice, "changepack.create").unwrap_err().code, ErrorCode::Forbidden);
-    assert_eq!(validate_grant(&w, w.now, &g).unwrap_err().code, ErrorCode::Unauthorized);
+    assert_eq!(
+        w.authz(alice, "changepack.create").unwrap_err().code,
+        ErrorCode::Forbidden
+    );
+    assert_eq!(
+        validate_grant(&w, w.now, &g).unwrap_err().code,
+        ErrorCode::Unauthorized
+    );
 }
 
 #[test]
@@ -165,7 +212,10 @@ fn grant_signed_by_non_issuer_key_rejected() {
     let alice = w.key_principal();
     let body = w.body(w.root(), alice, &["*"]);
     let g = sign_grant(body, &w.keys[&alice]).unwrap();
-    assert_eq!(validate_grant(&w, w.now, &g).unwrap_err().code, ErrorCode::Unauthorized);
+    assert_eq!(
+        validate_grant(&w, w.now, &g).unwrap_err().code,
+        ErrorCode::Unauthorized
+    );
 }
 
 #[test]
@@ -176,13 +226,19 @@ fn expired_and_not_yet_valid_grants() {
     b.expires_at = t(500);
     let g = w.sign(b);
     w.add(g);
-    assert_eq!(w.authz(alice, "changepack.create").unwrap_err().code, ErrorCode::CapabilityExpired);
+    assert_eq!(
+        w.authz(alice, "changepack.create").unwrap_err().code,
+        ErrorCode::CapabilityExpired
+    );
     let bob = w.key_principal();
     let mut b = w.body(w.root(), bob, &["changepack.create"]);
     b.not_before = t(2_000);
     let g = w.sign(b);
     w.add(g);
-    assert_eq!(w.authz(bob, "changepack.create").unwrap_err().code, ErrorCode::Forbidden);
+    assert_eq!(
+        w.authz(bob, "changepack.create").unwrap_err().code,
+        ErrorCode::Forbidden
+    );
 }
 
 #[test]
@@ -192,22 +248,34 @@ fn non_root_issuer_needs_parent() {
     let bob = w.key_principal();
     let g = w.sign(w.body(alice, bob, &["changepack.create"]));
     w.add(g.clone());
-    assert_eq!(w.authz(bob, "changepack.create").unwrap_err().code, ErrorCode::Forbidden);
-    assert_eq!(validate_grant(&w, w.now, &g).unwrap_err().code, ErrorCode::Forbidden);
+    assert_eq!(
+        w.authz(bob, "changepack.create").unwrap_err().code,
+        ErrorCode::Forbidden
+    );
+    assert_eq!(
+        validate_grant(&w, w.now, &g).unwrap_err().code,
+        ErrorCode::Forbidden
+    );
 }
 
 fn delegation(w: &mut World) -> (PrincipalId, PrincipalId, Digest, GrantBody) {
     let alice = w.key_principal();
     let bob = w.key_principal();
     let mut pb = w.body(w.root(), alice, &["changepack.*", "execution.start"]);
-    pb.resources = vec![ResourceSelector { kind: "kv.*".into(), locator_prefix: Some("app/".into()) }];
+    pb.resources = vec![ResourceSelector {
+        kind: "kv.*".into(),
+        locator_prefix: Some("app/".into()),
+    }];
     let parent = w.sign(pb);
     let pd = w.add(parent);
     let mut cb = w.body(alice, bob, &["changepack.create"]);
     cb.parent = Some(pd);
     cb.delegation_depth = 1;
     cb.expires_at = t(5_000);
-    cb.resources = vec![ResourceSelector { kind: "kv.entry".into(), locator_prefix: Some("app/x/".into()) }];
+    cb.resources = vec![ResourceSelector {
+        kind: "kv.entry".into(),
+        locator_prefix: Some("app/x/".into()),
+    }];
     (alice, bob, pd, cb)
 }
 
@@ -217,20 +285,40 @@ fn valid_delegation_chain() {
     let (_, bob, pd, cb) = delegation(&mut w);
     let child = w.sign(cb);
     let cd = w.add(child);
-    let a = w.authz_res(bob, "changepack.create", "kv.entry", "app/x/1").unwrap();
+    let a = w
+        .authz_res(bob, "changepack.create", "kv.entry", "app/x/1")
+        .unwrap();
     assert_eq!(a.grants, vec![cd, pd]);
-    assert_eq!(w.authz_res(bob, "changepack.create", "kv.entry", "app/y/1").unwrap_err().code, ErrorCode::Forbidden);
+    assert_eq!(
+        w.authz_res(bob, "changepack.create", "kv.entry", "app/y/1")
+            .unwrap_err()
+            .code,
+        ErrorCode::Forbidden
+    );
 }
 
 #[test]
 fn over_delegation_rejected() {
     for mutate in [
-        |b: &mut GrantBody| { b.actions.insert("changepack.promote.extra".into()); b.actions.insert("grant.issue".into()); },
+        |b: &mut GrantBody| {
+            b.actions.insert("changepack.promote.extra".into());
+            b.actions.insert("grant.issue".into());
+        },
         |b: &mut GrantBody| b.delegation_depth = 2,
         |b: &mut GrantBody| b.expires_at = t(20_000),
         |b: &mut GrantBody| b.resources = vec![],
-        |b: &mut GrantBody| b.resources = vec![ResourceSelector { kind: "*".into(), locator_prefix: None }],
-        |b: &mut GrantBody| b.resources = vec![ResourceSelector { kind: "kv.entry".into(), locator_prefix: Some("other/".into()) }],
+        |b: &mut GrantBody| {
+            b.resources = vec![ResourceSelector {
+                kind: "*".into(),
+                locator_prefix: None,
+            }]
+        },
+        |b: &mut GrantBody| {
+            b.resources = vec![ResourceSelector {
+                kind: "kv.entry".into(),
+                locator_prefix: Some("other/".into()),
+            }]
+        },
         |b: &mut GrantBody| b.not_before = t(-10),
     ] {
         let mut w = World::new();
@@ -239,7 +327,9 @@ fn over_delegation_rejected() {
         let child = w.sign(cb);
         w.add(child.clone());
         assert!(validate_grant(&w, w.now, &child).is_err());
-        assert!(w.authz_res(bob, "changepack.create", "kv.entry", "app/x/1").is_err());
+        assert!(w
+            .authz_res(bob, "changepack.create", "kv.entry", "app/x/1")
+            .is_err());
     }
 }
 
@@ -250,7 +340,10 @@ fn zero_depth_parent_cannot_delegate() {
     let bob = w.key_principal();
     let mut pb = w.body(w.root(), alice, &["*"]);
     pb.delegation_depth = 0;
-    let pd = { let g = w.sign(pb); w.add(g) };
+    let pd = {
+        let g = w.sign(pb);
+        w.add(g)
+    };
     let mut cb = w.body(alice, bob, &["changepack.create"]);
     cb.parent = Some(pd);
     cb.delegation_depth = 0;
@@ -276,10 +369,17 @@ fn revoking_parent_invalidates_descendants() {
     let (_, bob, pd, cb) = delegation(&mut w);
     let child = w.sign(cb);
     w.add(child);
-    assert!(w.authz_res(bob, "changepack.create", "kv.entry", "app/x/1").is_ok());
+    assert!(w
+        .authz_res(bob, "changepack.create", "kv.entry", "app/x/1")
+        .is_ok());
     let parent_id = w.grants[&pd].body.id;
     w.revoked.insert(parent_id);
-    assert_eq!(w.authz_res(bob, "changepack.create", "kv.entry", "app/x/1").unwrap_err().code, ErrorCode::CapabilityRevoked);
+    assert_eq!(
+        w.authz_res(bob, "changepack.create", "kv.entry", "app/x/1")
+            .unwrap_err()
+            .code,
+        ErrorCode::CapabilityRevoked
+    );
 }
 
 #[test]
@@ -318,15 +418,29 @@ fn action_patterns() {
 
 #[test]
 fn selector_matching_and_coverage() {
-    let r = ResourceRef { kind: "kv.entry".into(), locator: "app/a".into(), version: None, extension: "org.x.y".into() };
-    let s = |k: &str, p: Option<&str>| ResourceSelector { kind: k.into(), locator_prefix: p.map(Into::into) };
+    let r = ResourceRef {
+        kind: "kv.entry".into(),
+        locator: "app/a".into(),
+        version: None,
+        extension: "org.x.y".into(),
+    };
+    let s = |k: &str, p: Option<&str>| ResourceSelector {
+        kind: k.into(),
+        locator_prefix: p.map(Into::into),
+    };
     assert!(selector_matches(&s("kv.entry", Some("app/")), &r));
     assert!(selector_matches(&s("kv.*", None), &r));
     assert!(selector_matches(&s("*", None), &r));
     assert!(!selector_matches(&s("kv.entry", Some("other/")), &r));
     assert!(!selector_matches(&s("dataset.table", None), &r));
-    assert!(selector_covers(&s("kv.*", Some("app/")), &s("kv.entry", Some("app/x"))));
-    assert!(!selector_covers(&s("kv.entry", Some("app/x")), &s("kv.entry", Some("app/"))));
+    assert!(selector_covers(
+        &s("kv.*", Some("app/")),
+        &s("kv.entry", Some("app/x"))
+    ));
+    assert!(!selector_covers(
+        &s("kv.entry", Some("app/x")),
+        &s("kv.entry", Some("app/"))
+    ));
 }
 
 #[test]
@@ -334,26 +448,50 @@ fn actor_is_authorized_by_its_own_grants() {
     let mut w = World::new();
     let alice = w.key_principal();
     let actor: PrincipalId = w.ids.next();
-    w.principals.insert(actor, Principal {
-        id: actor, namespace: w.ns, kind: PrincipalKind::Actor, public_key: None, linked_to: Some(alice),
-        attributes: BTreeMap::from([("org.example.kind".into(), "agent".into())]), registered_at: t(0),
-    });
+    w.principals.insert(
+        actor,
+        Principal {
+            id: actor,
+            namespace: w.ns,
+            kind: PrincipalKind::Actor,
+            public_key: None,
+            linked_to: Some(alice),
+            attributes: BTreeMap::from([("org.example.kind".into(), "agent".into())]),
+            registered_at: t(0),
+        },
+    );
     let g = w.sign(w.body(w.root(), actor, &["execution.start"]));
     w.add(g);
     assert!(w.authz(actor, "execution.start").is_ok());
     assert!(w.authz(alice, "execution.start").is_err());
     assert!(resolve_caller(&w, alice, Some(actor)).is_ok());
     let bob = w.key_principal();
-    assert_eq!(resolve_caller(&w, bob, Some(actor)).unwrap_err().code, ErrorCode::Forbidden);
-    assert_eq!(resolve_caller(&w, actor, None).unwrap_err().code, ErrorCode::Unauthorized);
+    assert_eq!(
+        resolve_caller(&w, bob, Some(actor)).unwrap_err().code,
+        ErrorCode::Forbidden
+    );
+    assert_eq!(
+        resolve_caller(&w, actor, None).unwrap_err().code,
+        ErrorCode::Unauthorized
+    );
 }
 
 #[test]
 fn freshness_window() {
     let now = t(1_000);
     assert!(check_freshness(now, t(1_000 - 200), None, 300_000).is_ok());
-    assert_eq!(check_freshness(now, t(1_000 - 400), None, 300_000).unwrap_err().code, ErrorCode::ReplayDetected);
-    assert_eq!(check_freshness(now, t(1_000 + 400), None, 300_000).unwrap_err().code, ErrorCode::ReplayDetected);
+    assert_eq!(
+        check_freshness(now, t(1_000 - 400), None, 300_000)
+            .unwrap_err()
+            .code,
+        ErrorCode::ReplayDetected
+    );
+    assert_eq!(
+        check_freshness(now, t(1_000 + 400), None, 300_000)
+            .unwrap_err()
+            .code,
+        ErrorCode::ReplayDetected
+    );
     assert!(check_freshness(now, t(1_000), Some(t(999)), 300_000).is_err());
 }
 
@@ -361,7 +499,14 @@ mod props {
     use super::*;
     use proptest::prelude::*;
 
-    const ACTIONS: [&str; 6] = ["changepack.create", "changepack.seal", "execution.start", "evidence.append", "kv.write", "kv.read"];
+    const ACTIONS: [&str; 6] = [
+        "changepack.create",
+        "changepack.seal",
+        "execution.start",
+        "evidence.append",
+        "kv.write",
+        "kv.read",
+    ];
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(24))]

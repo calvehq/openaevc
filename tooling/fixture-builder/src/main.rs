@@ -31,7 +31,13 @@ impl Ctx {
         let ids = SequentialIds::new(7);
         let ns = ids.next();
         let pri = ids.next();
-        Ctx { ids, ns, pri, key: SigningKey::from_seed([1; 32]), runtime_key: SigningKey::from_seed([2; 32]) }
+        Ctx {
+            ids,
+            ns,
+            pri,
+            key: SigningKey::from_seed([1; 32]),
+            runtime_key: SigningKey::from_seed([2; 32]),
+        }
     }
 
     fn env<T: Serialize>(&self, kind: ObjectKind, seq: u64, body: &T) -> ObjectEnvelope {
@@ -70,7 +76,10 @@ fn values() -> Value {
         ("empty_map", json!({})),
         ("key_order_length_first", json!({"aa": 1, "b": 2, "a": 3})),
         ("key_order_bytewise", json!({"B": 1, "a": 2, "_": 3})),
-        ("nested", json!({"list": [1, [2, {"x": "y"}]], "map": {"k": false}})),
+        (
+            "nested",
+            json!({"list": [1, [2, {"x": "y"}]], "map": {"k": false}}),
+        ),
         ("long_text_24", json!("abcdefghijklmnopqrstuvwx")),
     ];
     let valid: Vec<Value> = valid
@@ -122,8 +131,17 @@ fn objects(cx: &Ctx) -> Value {
     let rti: RuntimeInstanceId = cx.ids.next();
     let t0 = ts("2024-05-01T12:00:00.000000000Z");
     let t1 = ts("2024-05-01T12:00:01.500000000Z");
-    let ext = ExtensionRef { id: "org.openaevc.reference.kv".into(), version: "0.1.0".into(), manifest_digest: d("manifest") };
-    let resource = ResourceRef { kind: "kv.entry".into(), locator: "config/limit".into(), version: None, extension: ext.id.clone() };
+    let ext = ExtensionRef {
+        id: "org.openaevc.reference.kv".into(),
+        version: "0.1.0".into(),
+        manifest_digest: d("manifest"),
+    };
+    let resource = ResourceRef {
+        kind: "kv.entry".into(),
+        locator: "config/limit".into(),
+        version: None,
+        extension: ext.id.clone(),
+    };
     let prov = Provenance {
         actor: cx.pri,
         caller: cx.pri,
@@ -139,14 +157,23 @@ fn objects(cx: &Ctx) -> Value {
         runtime_instance: rti,
         inputs: vec![],
     };
-    let blob = Blob { media_type: "application/json".into(), data: br#"{"key":"config/limit","value":"42"}"#.to_vec() };
+    let blob = Blob {
+        media_type: "application/json".into(),
+        data: br#"{"key":"config/limit","value":"42"}"#.to_vec(),
+    };
     let grant_body = GrantBody {
         id: cx.ids.next(),
         namespace: cx.ns,
         issuer: cx.pri,
         subject: cx.ids.next(),
-        actions: ["changepack.create", "changepack.seal", "kv.*"].iter().map(|s| s.to_string()).collect(),
-        resources: vec![ResourceSelector { kind: "kv.entry".into(), locator_prefix: Some("config/".into()) }],
+        actions: ["changepack.create", "changepack.seal", "kv.*"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        resources: vec![ResourceSelector {
+            kind: "kv.entry".into(),
+            locator_prefix: Some("config/".into()),
+        }],
         constraints: BTreeMap::new(),
         not_before: t0,
         expires_at: ts("2025-05-01T12:00:00Z"),
@@ -155,21 +182,36 @@ fn objects(cx: &Ctx) -> Value {
         nonce: "bm9uY2UtMQ".into(),
     };
     let grant_msg = openaevc_canonical::to_canonical(&grant_body).unwrap();
-    let grant = SignedGrant { signature: cx.key.sign(Domain::Grant, &grant_msg), body: grant_body };
+    let grant = SignedGrant {
+        signature: cx.key.sign(Domain::Grant, &grant_msg),
+        body: grant_body,
+    };
     let policy = PolicyDocument {
         name: "org.example.gates".into(),
         description: Some("Require passing expectation checks.".into()),
         rules: vec![PolicyRule {
             id: "expect-pass".into(),
             expr: Expr::All(vec![
-                Expr::Verifier(VerifierCondition { kind: "kv.expect".into(), status: VerificationStatus::Pass }),
-                Expr::Not(Box::new(Expr::Evaluator(EvaluatorCondition { kind: "kv.size".into(), verdict: EvaluationVerdict::Deny }))),
+                Expr::Verifier(VerifierCondition {
+                    kind: "kv.expect".into(),
+                    status: VerificationStatus::Pass,
+                }),
+                Expr::Not(Box::new(Expr::Evaluator(EvaluatorCondition {
+                    kind: "kv.size".into(),
+                    verdict: EvaluationVerdict::Deny,
+                }))),
             ]),
         }],
     };
     let mut facts = Facts::new();
-    facts.insert("verification.kv.expect.status".into(), FactValue::Text("PASS".into()));
-    facts.insert("kv.keys".into(), FactValue::Set(BTreeSet::from(["config/limit".to_string()])));
+    facts.insert(
+        "verification.kv.expect.status".into(),
+        FactValue::Text("PASS".into()),
+    );
+    facts.insert(
+        "kv.keys".into(),
+        FactValue::Set(BTreeSet::from(["config/limit".to_string()])),
+    );
     facts.insert("kv.count".into(), FactValue::Int(1));
     let effect = AppliedEffect {
         id: cx.ids.next(),
@@ -189,15 +231,25 @@ fn objects(cx: &Ctx) -> Value {
         contract: SUPPORTED_CONTRACT,
         publisher: Some(cx.key.public_key()),
         artifact_digest: d("artifact"),
-        resource_kinds: vec![ResourceKindDecl { kind: "kv.entry".into(), description: None }],
-        effect_kinds: vec![EffectKindDecl { kind: "kv.set".into(), resource_kind: "kv.entry".into(), required_actions: vec!["kv.write".into()] }],
+        resource_kinds: vec![ResourceKindDecl {
+            kind: "kv.entry".into(),
+            description: None,
+        }],
+        effect_kinds: vec![EffectKindDecl {
+            kind: "kv.set".into(),
+            resource_kind: "kv.entry".into(),
+            required_actions: vec!["kv.write".into()],
+        }],
         verifier_kinds: vec!["kv.expect".into()],
         evaluator_kinds: vec!["kv.size".into()],
         composition_validators: vec!["kv.terminal-values".into()],
         host_capabilities: vec![HostCapability::ResourceRead],
         schemas: BTreeMap::new(),
         execution_modes: vec!["subprocess".into()],
-        entrypoint: Entrypoint { command: "openaevc-ext-reference-kv".into(), args: vec![] },
+        entrypoint: Entrypoint {
+            command: "openaevc-ext-reference-kv".into(),
+            args: vec![],
+        },
     };
     let decision = PolicyDecision {
         pack,
@@ -206,10 +258,18 @@ fn objects(cx: &Ctx) -> Value {
         policies: vec![d("policy")],
         facts: facts.clone(),
         outcome: DecisionOutcome::Allow,
-        rules: vec![RuleResult { policy: d("policy"), rule: "expect-pass".into(), passed: true }],
+        rules: vec![RuleResult {
+            policy: d("policy"),
+            rule: "expect-pass".into(),
+            passed: true,
+        }],
         evaluated_at: t1,
     };
-    let run = RunProvenance { caller: cx.pri, request_id: req, runtime_instance: rti };
+    let run = RunProvenance {
+        caller: cx.pri,
+        request_id: req,
+        runtime_instance: rti,
+    };
     let record = PromotionRecord {
         id: cx.ids.next(),
         pack,
@@ -224,11 +284,17 @@ fn objects(cx: &Ctx) -> Value {
         pack,
         generation: 2,
         candidate: d("candidate"),
-        effects: vec![EffectSummary { kind: "kv.set".into(), target: resource.clone() }],
+        effects: vec![EffectSummary {
+            kind: "kv.set".into(),
+            target: resource.clone(),
+        }],
         resources: vec![resource.clone()],
         dependencies: vec![d("dependency")],
         conflicts_with: vec![],
-        revision: Some(RevisionInfo { relation: RevisionRelation::Amends, targets: vec![d("target")] }),
+        revision: Some(RevisionInfo {
+            relation: RevisionRelation::Amends,
+            targets: vec![d("target")],
+        }),
         verifications: vec![d("verification")],
         evaluations: vec![d("evaluation")],
         evidence: vec![d("evidence")],
@@ -243,7 +309,12 @@ fn objects(cx: &Ctx) -> Value {
     let baseline = Baseline {
         id: cx.ids.next(),
         members: vec![m0.min(m1), m0.max(m1)],
-        edges: vec![CompositionEdge { from: m0.max(m1), to: m0.min(m1), kind: CompositionEdgeKind::Requires, relation: None }],
+        edges: vec![CompositionEdge {
+            from: m0.max(m1),
+            to: m0.min(m1),
+            kind: CompositionEdgeKind::Requires,
+            relation: None,
+        }],
         heads: vec![m0.min(m1), m0.max(m1)],
         policies: vec![d("policy")],
         facts: Facts::new(),
@@ -255,7 +326,12 @@ fn objects(cx: &Ctx) -> Value {
         command: "SealChangePack".into(),
         caller: cx.pri,
         envelope_digest: d("envelope"),
-        result: CommandResult { id: Some(pack.to_string()), generation: Some(2), state: Some("SEALED".into()), ..Default::default() },
+        result: CommandResult {
+            id: Some(pack.to_string()),
+            generation: Some(2),
+            state: Some("SEALED".into()),
+            ..Default::default()
+        },
         first_seq: 10,
         last_seq: 10,
         runtime_instance: rti,
@@ -269,39 +345,166 @@ fn objects(cx: &Ctx) -> Value {
         created_at: t1,
     };
     let bodies: Vec<(&str, ObjectKind, Value)> = vec![
-        ("blob", ObjectKind::Blob, serde_json::to_value(&blob).unwrap()),
-        ("capability_grant", ObjectKind::CapabilityGrant, serde_json::to_value(&grant).unwrap()),
-        ("revocation", ObjectKind::Revocation, serde_json::to_value(Revocation { grant: grant.body.id, grant_digest: d("grant"), revoked_by: cx.pri, revoked_at: t1, reason: Some("rotated".into()) }).unwrap()),
-        ("policy_document", ObjectKind::PolicyDocument, serde_json::to_value(&policy).unwrap()),
-        ("policy_decision", ObjectKind::PolicyDecision, serde_json::to_value(&decision).unwrap()),
-        ("extension_manifest", ObjectKind::ExtensionManifest, serde_json::to_value(&manifest).unwrap()),
-        ("candidate", ObjectKind::Candidate, serde_json::to_value(Candidate { pack, generation: 2, effects: vec![effect.clone()] }).unwrap()),
-        ("observation", ObjectKind::Observation, serde_json::to_value(Observation {
-            id: cx.ids.next(), execution: exe, pack, generation: 2, work_unit: wu, producer: cx.pri, observed_at: t0,
-            kind: "kv.read".into(), payload: Some(json!({"value": "41"})), blob: Some(d("blob")),
-            related_resources: vec![resource.clone()], related_effects: vec![effect.id], provenance: prov.clone(),
-        }).unwrap()),
-        ("evidence", ObjectKind::Evidence, serde_json::to_value(Evidence {
-            id: cx.ids.next(), kind: "kv.snapshot".into(), producer: cx.pri, pack, generation: 2, candidate: d("candidate"),
-            payload: d("blob"), media_type: "application/json".into(), schema: Some(SchemaRef { id: "kv.snapshot".into(), version: "1".into() }),
-            sources: vec![NodeRef::from(exe)], extension: Some(ext.clone()), created_at: t1,
-        }).unwrap()),
-        ("verification_result", ObjectKind::VerificationResult, serde_json::to_value(VerificationResult {
-            id: cx.ids.next(), pack, generation: 2, candidate: d("candidate"), verifier: "kv.expect".into(), extension: Some(ext.clone()),
-            config: Some(json!({"key": "config/limit", "value": "42"})), status: VerificationStatus::Pass, evidence: vec![d("evidence")],
-            findings: vec![Finding { code: "kv.match".into(), message: "value matches".into(), resource: Some(resource.clone()) }],
-            facts: facts.clone(), started_at: t0, finished_at: t1, provenance: run.clone(),
-        }).unwrap()),
-        ("evaluation_result", ObjectKind::EvaluationResult, serde_json::to_value(EvaluationResult {
-            id: cx.ids.next(), pack, generation: 2, candidate: d("candidate"), evaluator: "kv.size".into(), extension: Some(ext.clone()),
-            config: Some(json!({"max_keys": 10})), verdict: EvaluationVerdict::Allow, metrics: BTreeMap::from([("kv.keys".to_string(), 1)]),
-            facts: Facts::new(), inputs: vec![d("verification")], started_at: t0, finished_at: t1, provenance: run,
-        }).unwrap()),
-        ("promoted_pack", ObjectKind::PromotedPack, serde_json::to_value(&promoted).unwrap()),
-        ("promotion_record", ObjectKind::PromotionRecord, serde_json::to_value(&record).unwrap()),
-        ("receipt", ObjectKind::Receipt, serde_json::to_value(&receipt).unwrap()),
-        ("baseline", ObjectKind::Baseline, serde_json::to_value(&baseline).unwrap()),
-        ("journal_checkpoint", ObjectKind::JournalCheckpoint, serde_json::to_value(&checkpoint).unwrap()),
+        (
+            "blob",
+            ObjectKind::Blob,
+            serde_json::to_value(&blob).unwrap(),
+        ),
+        (
+            "capability_grant",
+            ObjectKind::CapabilityGrant,
+            serde_json::to_value(&grant).unwrap(),
+        ),
+        (
+            "revocation",
+            ObjectKind::Revocation,
+            serde_json::to_value(Revocation {
+                grant: grant.body.id,
+                grant_digest: d("grant"),
+                revoked_by: cx.pri,
+                revoked_at: t1,
+                reason: Some("rotated".into()),
+            })
+            .unwrap(),
+        ),
+        (
+            "policy_document",
+            ObjectKind::PolicyDocument,
+            serde_json::to_value(&policy).unwrap(),
+        ),
+        (
+            "policy_decision",
+            ObjectKind::PolicyDecision,
+            serde_json::to_value(&decision).unwrap(),
+        ),
+        (
+            "extension_manifest",
+            ObjectKind::ExtensionManifest,
+            serde_json::to_value(&manifest).unwrap(),
+        ),
+        (
+            "candidate",
+            ObjectKind::Candidate,
+            serde_json::to_value(Candidate {
+                pack,
+                generation: 2,
+                effects: vec![effect.clone()],
+            })
+            .unwrap(),
+        ),
+        (
+            "observation",
+            ObjectKind::Observation,
+            serde_json::to_value(Observation {
+                id: cx.ids.next(),
+                execution: exe,
+                pack,
+                generation: 2,
+                work_unit: wu,
+                producer: cx.pri,
+                observed_at: t0,
+                kind: "kv.read".into(),
+                payload: Some(json!({"value": "41"})),
+                blob: Some(d("blob")),
+                related_resources: vec![resource.clone()],
+                related_effects: vec![effect.id],
+                provenance: prov.clone(),
+            })
+            .unwrap(),
+        ),
+        (
+            "evidence",
+            ObjectKind::Evidence,
+            serde_json::to_value(Evidence {
+                id: cx.ids.next(),
+                kind: "kv.snapshot".into(),
+                producer: cx.pri,
+                pack,
+                generation: 2,
+                candidate: d("candidate"),
+                payload: d("blob"),
+                media_type: "application/json".into(),
+                schema: Some(SchemaRef {
+                    id: "kv.snapshot".into(),
+                    version: "1".into(),
+                }),
+                sources: vec![NodeRef::from(exe)],
+                extension: Some(ext.clone()),
+                created_at: t1,
+            })
+            .unwrap(),
+        ),
+        (
+            "verification_result",
+            ObjectKind::VerificationResult,
+            serde_json::to_value(VerificationResult {
+                id: cx.ids.next(),
+                pack,
+                generation: 2,
+                candidate: d("candidate"),
+                verifier: "kv.expect".into(),
+                extension: Some(ext.clone()),
+                config: Some(json!({"key": "config/limit", "value": "42"})),
+                status: VerificationStatus::Pass,
+                evidence: vec![d("evidence")],
+                findings: vec![Finding {
+                    code: "kv.match".into(),
+                    message: "value matches".into(),
+                    resource: Some(resource.clone()),
+                }],
+                facts: facts.clone(),
+                started_at: t0,
+                finished_at: t1,
+                provenance: run.clone(),
+            })
+            .unwrap(),
+        ),
+        (
+            "evaluation_result",
+            ObjectKind::EvaluationResult,
+            serde_json::to_value(EvaluationResult {
+                id: cx.ids.next(),
+                pack,
+                generation: 2,
+                candidate: d("candidate"),
+                evaluator: "kv.size".into(),
+                extension: Some(ext.clone()),
+                config: Some(json!({"max_keys": 10})),
+                verdict: EvaluationVerdict::Allow,
+                metrics: BTreeMap::from([("kv.keys".to_string(), 1)]),
+                facts: Facts::new(),
+                inputs: vec![d("verification")],
+                started_at: t0,
+                finished_at: t1,
+                provenance: run,
+            })
+            .unwrap(),
+        ),
+        (
+            "promoted_pack",
+            ObjectKind::PromotedPack,
+            serde_json::to_value(&promoted).unwrap(),
+        ),
+        (
+            "promotion_record",
+            ObjectKind::PromotionRecord,
+            serde_json::to_value(&record).unwrap(),
+        ),
+        (
+            "receipt",
+            ObjectKind::Receipt,
+            serde_json::to_value(&receipt).unwrap(),
+        ),
+        (
+            "baseline",
+            ObjectKind::Baseline,
+            serde_json::to_value(&baseline).unwrap(),
+        ),
+        (
+            "journal_checkpoint",
+            ObjectKind::JournalCheckpoint,
+            serde_json::to_value(&checkpoint).unwrap(),
+        ),
     ];
     let mut valid = Vec::new();
     for (i, (name, kind, body)) in bodies.into_iter().enumerate() {
@@ -313,7 +516,12 @@ fn objects(cx: &Ctx) -> Value {
             env.id = Some(baseline.id.to_string());
         }
         let obj = ImmutableObject::build(env).unwrap();
-        let refs: Vec<String> = obj.references().unwrap().iter().map(|d| d.to_string()).collect();
+        let refs: Vec<String> = obj
+            .references()
+            .unwrap()
+            .iter()
+            .map(|d| d.to_string())
+            .collect();
         valid.push(json!({
             "name": name,
             "kind": kind,
@@ -363,7 +571,10 @@ fn signatures(cx: &Ctx) -> Value {
         nonce: "c2lnbmF0dXJlLWZpeHR1cmU".into(),
         issued_at: ts("2024-05-01T12:00:00.000000000Z"),
         expires_at: None,
-        body: Command::SealChangePack { pack: PackId::Change(cx.ids.next()), expected_generation: 3 },
+        body: Command::SealChangePack {
+            pack: PackId::Change(cx.ids.next()),
+            expected_generation: 3,
+        },
         signature: None,
     };
     let unsigned = serde_json::to_value(&env).unwrap();
@@ -415,13 +626,22 @@ fn authority(cx: &Ctx) -> Value {
     let bob: PrincipalId = cx.ids.next();
     let carol: PrincipalId = cx.ids.next();
     let principal = |id: PrincipalId, k: &SigningKey| json!({"id": id, "kind": "KEY", "public_key": k.public_key()});
-    let body = |id: GrantId, issuer, subject, actions: &[&str], parent: Option<Digest>, depth: u32, exp: &str| GrantBody {
+    let body = |id: GrantId,
+                issuer,
+                subject,
+                actions: &[&str],
+                parent: Option<Digest>,
+                depth: u32,
+                exp: &str| GrantBody {
         id,
         namespace: cx.ns,
         issuer,
         subject,
         actions: actions.iter().map(|s| s.to_string()).collect(),
-        resources: vec![ResourceSelector { kind: "kv.*".into(), locator_prefix: Some("app/".into()) }],
+        resources: vec![ResourceSelector {
+            kind: "kv.*".into(),
+            locator_prefix: Some("app/".into()),
+        }],
         constraints: BTreeMap::new(),
         not_before: t("2024-01-01T00:00:00Z"),
         expires_at: t(exp),
@@ -429,15 +649,75 @@ fn authority(cx: &Ctx) -> Value {
         parent,
         nonce: "Zml4dHVyZQ".into(),
     };
-    let g_alice = sign_grant(body(cx.ids.next(), root, alice, &["changepack.*", "kv.write"], None, 1, "2030-01-01T00:00:00Z"), &root_k).unwrap();
+    let g_alice = sign_grant(
+        body(
+            cx.ids.next(),
+            root,
+            alice,
+            &["changepack.*", "kv.write"],
+            None,
+            1,
+            "2030-01-01T00:00:00Z",
+        ),
+        &root_k,
+    )
+    .unwrap();
     let d_alice = openaevc_crypto::digest_of(&g_alice).unwrap();
-    let g_bob = sign_grant(body(cx.ids.next(), alice, bob, &["changepack.create"], Some(d_alice), 0, "2029-01-01T00:00:00Z"), &alice_k).unwrap();
+    let g_bob = sign_grant(
+        body(
+            cx.ids.next(),
+            alice,
+            bob,
+            &["changepack.create"],
+            Some(d_alice),
+            0,
+            "2029-01-01T00:00:00Z",
+        ),
+        &alice_k,
+    )
+    .unwrap();
     let d_bob = openaevc_crypto::digest_of(&g_bob).unwrap();
-    let g_bob_wide = sign_grant(body(cx.ids.next(), alice, bob, &["baseline.create"], Some(d_alice), 0, "2029-01-01T00:00:00Z"), &alice_k).unwrap();
+    let g_bob_wide = sign_grant(
+        body(
+            cx.ids.next(),
+            alice,
+            bob,
+            &["baseline.create"],
+            Some(d_alice),
+            0,
+            "2029-01-01T00:00:00Z",
+        ),
+        &alice_k,
+    )
+    .unwrap();
     let d_bob_wide = openaevc_crypto::digest_of(&g_bob_wide).unwrap();
-    let g_carol_expired = sign_grant(body(cx.ids.next(), root, carol, &["changepack.seal"], None, 0, "2024-02-01T00:00:00Z"), &root_k).unwrap();
+    let g_carol_expired = sign_grant(
+        body(
+            cx.ids.next(),
+            root,
+            carol,
+            &["changepack.seal"],
+            None,
+            0,
+            "2024-02-01T00:00:00Z",
+        ),
+        &root_k,
+    )
+    .unwrap();
     let d_carol = openaevc_crypto::digest_of(&g_carol_expired).unwrap();
-    let mut g_forged = sign_grant(body(cx.ids.next(), root, carol, &["changepack.create"], None, 0, "2030-01-01T00:00:00Z"), &carol_k).unwrap();
+    let mut g_forged = sign_grant(
+        body(
+            cx.ids.next(),
+            root,
+            carol,
+            &["changepack.create"],
+            None,
+            0,
+            "2030-01-01T00:00:00Z",
+        ),
+        &carol_k,
+    )
+    .unwrap();
     g_forged.body.nonce = "Zm9yZ2Vk".into();
     let d_forged = openaevc_crypto::digest_of(&g_forged).unwrap();
     let res = |loc: &str| json!({"kind": "kv.entry", "locator": loc, "extension": "org.openaevc.reference.kv"});
@@ -485,7 +765,9 @@ fn main() {
         let path = root.join(name);
         if check {
             if std::fs::read_to_string(&path).ok().as_deref() != Some(content.as_str()) {
-                eprintln!("fixtures/canonical/{name} is out of date; run `cargo run -p fixture-builder`");
+                eprintln!(
+                    "fixtures/canonical/{name} is out of date; run `cargo run -p fixture-builder`"
+                );
                 stale = true;
             }
         } else {

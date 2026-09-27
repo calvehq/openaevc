@@ -14,7 +14,10 @@ fn integers_use_shortest_form() {
     assert_eq!(hex(&encode(&json!(24)).unwrap()), "1818");
     assert_eq!(hex(&encode(&json!(256)).unwrap()), "190100");
     assert_eq!(hex(&encode(&json!(65536)).unwrap()), "1a00010000");
-    assert_eq!(hex(&encode(&json!(4294967296u64)).unwrap()), "1b0000000100000000");
+    assert_eq!(
+        hex(&encode(&json!(4294967296u64)).unwrap()),
+        "1b0000000100000000"
+    );
     assert_eq!(hex(&encode(&json!(-1)).unwrap()), "20");
     assert_eq!(hex(&encode(&json!(-25)).unwrap()), "3818");
 }
@@ -23,7 +26,10 @@ fn integers_use_shortest_form() {
 fn map_keys_sorted_by_encoded_bytes() {
     // Length-first then bytewise: "b" < "aa".
     let v = json!({"aa": 1, "b": 2, "a": 3});
-    assert_eq!(hex(&encode(&v).unwrap()), "a3616103616202626161 01".replace(' ', ""));
+    assert_eq!(
+        hex(&encode(&v).unwrap()),
+        "a3616103616202626161 01".replace(' ', "")
+    );
 }
 
 #[test]
@@ -36,9 +42,18 @@ fn text_bool_array() {
 fn rejects_floats_nulls_and_unsafe_integers() {
     assert!(matches!(encode(&json!(1.5)), Err(CanonicalError::Float)));
     assert!(matches!(encode(&json!(1.0)), Err(CanonicalError::Float)));
-    assert!(matches!(encode(&json!({"a": null})), Err(CanonicalError::Null)));
-    assert!(matches!(encode(&json!(9007199254740992u64)), Err(CanonicalError::IntegerRange)));
-    assert!(matches!(encode(&json!(-9007199254740992i64)), Err(CanonicalError::IntegerRange)));
+    assert!(matches!(
+        encode(&json!({"a": null})),
+        Err(CanonicalError::Null)
+    ));
+    assert!(matches!(
+        encode(&json!(9007199254740992u64)),
+        Err(CanonicalError::IntegerRange)
+    ));
+    assert!(matches!(
+        encode(&json!(-9007199254740992i64)),
+        Err(CanonicalError::IntegerRange)
+    ));
     assert!(encode(&json!(9007199254740991u64)).is_ok());
 }
 
@@ -49,7 +64,10 @@ fn decode_round_trips() {
 }
 
 fn bytes(h: &str) -> Vec<u8> {
-    (0..h.len()).step_by(2).map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap()).collect()
+    (0..h.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 #[test]
@@ -94,7 +112,10 @@ struct Obj {
 
 #[test]
 fn typed_round_trip_and_unknown_fields_rejected() {
-    let o = Obj { name: "x".into(), count: None };
+    let o = Obj {
+        name: "x".into(),
+        count: None,
+    };
     let b = to_canonical(&o).unwrap();
     assert_eq!(from_canonical::<Obj>(&b).unwrap(), o);
     let extra = encode(&json!({"name": "x", "zzz": 1})).unwrap();

@@ -18,7 +18,12 @@ macro_rules! string_schema {
     };
 }
 
-string_schema!(crate::Digest, "Digest", "^sha256:[0-9a-f]{64}$", "Algorithm-tagged SHA-256 digest.");
+string_schema!(
+    crate::Digest,
+    "Digest",
+    "^sha256:[0-9a-f]{64}$",
+    "Algorithm-tagged SHA-256 digest."
+);
 string_schema!(
     crate::Timestamp,
     "Timestamp",
@@ -31,13 +36,33 @@ string_schema!(
     "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
     "MAJOR.MINOR.PATCH protocol version."
 );
-string_schema!(crate::PublicKey, "PublicKey", "^ed25519:[A-Za-z0-9_-]{43}$", "Ed25519 public key, unpadded base64url.");
-string_schema!(crate::Signature, "Signature", "^[A-Za-z0-9_-]{86}$", "Ed25519 signature, unpadded base64url.");
-string_schema!(crate::PackId, "PackId", "^(cpk|rpk)_[a-z2-7]{26}$", "ChangePack or RevisionPack identifier.");
+string_schema!(
+    crate::PublicKey,
+    "PublicKey",
+    "^ed25519:[A-Za-z0-9_-]{43}$",
+    "Ed25519 public key, unpadded base64url."
+);
+string_schema!(
+    crate::Signature,
+    "Signature",
+    "^[A-Za-z0-9_-]{86}$",
+    "Ed25519 signature, unpadded base64url."
+);
+string_schema!(
+    crate::PackId,
+    "PackId",
+    "^(cpk|rpk)_[a-z2-7]{26}$",
+    "ChangePack or RevisionPack identifier."
+);
 string_schema!(
     crate::NodeRef,
     "NodeRef",
     "^([a-z]{2,3}_[a-z2-7]{26}|sha256:[0-9a-f]{64})$",
     "Active Change Graph node: typed identifier or object digest."
 );
-string_schema!(crate::AnyId, "AnyId", "^[a-z]{2,3}_[a-z2-7]{26}$", "Any typed identifier.");
+string_schema!(
+    crate::AnyId,
+    "AnyId",
+    "^[a-z]{2,3}_[a-z2-7]{26}$",
+    "Any typed identifier."
+);

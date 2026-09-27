@@ -13,9 +13,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use crate::{
-    AnyId, ChangePackId, Digest, ExecutionId, EffectId, GrantId, LeaseId, NamespaceId,
-    ObservationId, PrincipalId, PublicKey, RequestId, RevisionPackId, RuntimeInstanceId,
-    Signature, Timestamp, WorkUnitId,
+    AnyId, ChangePackId, Digest, EffectId, ExecutionId, GrantId, LeaseId, NamespaceId,
+    ObservationId, PrincipalId, PublicKey, RequestId, RevisionPackId, RuntimeInstanceId, Signature,
+    Timestamp, WorkUnitId,
 };
 
 /// Namespaced metadata / extension map. Keys MUST be namespaced names (spec/namespace.md).
@@ -119,9 +119,14 @@ impl FromStr for NodeRef {
 
     fn from_str(s: &str) -> Result<Self, String> {
         if s.starts_with("sha256:") {
-            return s.parse().map(NodeRef::Digest).map_err(|e: crate::digest::DigestParseError| e.to_string());
+            return s
+                .parse()
+                .map(NodeRef::Digest)
+                .map_err(|e: crate::digest::DigestParseError| e.to_string());
         }
-        s.parse().map(NodeRef::Id).map_err(|e: crate::id::IdParseError| e.to_string())
+        s.parse()
+            .map(NodeRef::Id)
+            .map_err(|e: crate::id::IdParseError| e.to_string())
     }
 }
 
@@ -138,7 +143,9 @@ impl<T: Into<AnyId>> From<T> for NodeRef {
 
 /// Address of a domain resource. The locator is opaque to the runtime and interpreted by the
 /// owning extension. Resources are always scoped to the Namespace of the object holding them.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct ResourceRef {
     pub kind: String,
@@ -150,7 +157,9 @@ pub struct ResourceRef {
 }
 
 /// Registered extension identity bound into provenance and promoted objects.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct ExtensionRef {
     pub id: String,
@@ -272,7 +281,9 @@ pub struct NewPrincipal {
 
 /// Selects resources a grant applies to. `kind` is an exact kind, `*`, or a `prefix.*`
 /// pattern; `locator_prefix` further restricts locators.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct ResourceSelector {
     pub kind: String,
@@ -358,7 +369,9 @@ impl PackState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RevisionRelation {
     Amends,
@@ -469,7 +482,9 @@ pub struct ChangePack {
 // ---------------------------------------------------------------------------------------------
 // Active Change Graph
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ActiveEdgeKind {
     DependsOn,
@@ -637,7 +652,9 @@ mod tests {
     where
         T::Err: std::fmt::Debug,
     {
-        format!("{prefix}_agjdus24nvyadaareizuivlgo4").parse().unwrap()
+        format!("{prefix}_agjdus24nvyadaareizuivlgo4")
+            .parse()
+            .unwrap()
     }
 
     #[test]
@@ -651,10 +668,22 @@ mod tests {
 
     #[test]
     fn states_serialize_screaming() {
-        assert_eq!(serde_json::to_value(PackState::Qualified).unwrap(), json!("QUALIFIED"));
-        assert_eq!(serde_json::to_value(ExecutionState::Lost).unwrap(), json!("LOST"));
-        assert_eq!(serde_json::to_value(ActiveEdgeKind::DependsOn).unwrap(), json!("DEPENDS_ON"));
-        assert_eq!(serde_json::to_value(PrincipalKind::Actor).unwrap(), json!("ACTOR"));
+        assert_eq!(
+            serde_json::to_value(PackState::Qualified).unwrap(),
+            json!("QUALIFIED")
+        );
+        assert_eq!(
+            serde_json::to_value(ExecutionState::Lost).unwrap(),
+            json!("LOST")
+        );
+        assert_eq!(
+            serde_json::to_value(ActiveEdgeKind::DependsOn).unwrap(),
+            json!("DEPENDS_ON")
+        );
+        assert_eq!(
+            serde_json::to_value(PrincipalKind::Actor).unwrap(),
+            json!("ACTOR")
+        );
     }
 
     #[test]
@@ -682,7 +711,8 @@ mod tests {
     fn resource_ref_rejects_unknown_fields() {
         let ok = json!({"kind": "kv.entry", "locator": "a", "extension": "org.openaevc.kv"});
         serde_json::from_value::<ResourceRef>(ok).unwrap();
-        let bad = json!({"kind": "kv.entry", "locator": "a", "extension": "org.openaevc.kv", "x": 1});
+        let bad =
+            json!({"kind": "kv.entry", "locator": "a", "extension": "org.openaevc.kv", "x": 1});
         assert!(serde_json::from_value::<ResourceRef>(bad).is_err());
     }
 

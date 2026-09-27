@@ -6,9 +6,9 @@ use std::sync::Arc;
 use openaevc_crypto::{Domain, Signer};
 use openaevc_protocol::{
     err, Baseline, Blob, Candidate, Digest, ErrorCode, EvaluationResult, Evidence,
-    ExtensionManifest, JournalCheckpoint, ObjectEnvelope, ObjectKind, Observation,
-    PolicyDecision, PolicyDocument, PromotedPack, PromotionRecord, ProtocolError, Receipt,
-    Revocation, SignedGrant, VerificationResult, SUPPORTED_PROTOCOL,
+    ExtensionManifest, JournalCheckpoint, ObjectEnvelope, ObjectKind, Observation, PolicyDecision,
+    PolicyDocument, PromotedPack, PromotionRecord, ProtocolError, Receipt, Revocation, SignedGrant,
+    VerificationResult, SUPPORTED_PROTOCOL,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -29,9 +29,16 @@ pub fn signing_digest(env: &ObjectEnvelope) -> Result<Digest, ProtocolError> {
 }
 
 /// Adds `signer`'s signature over the envelope's signing digest.
-pub fn sign_envelope(mut env: ObjectEnvelope, signer: &dyn Signer) -> Result<ObjectEnvelope, ProtocolError> {
+pub fn sign_envelope(
+    mut env: ObjectEnvelope,
+    signer: &dyn Signer,
+) -> Result<ObjectEnvelope, ProtocolError> {
     let d = signing_digest(&env)?;
-    env.signatures.push(openaevc_crypto::sign_entry(signer, Domain::Object, d.as_bytes()));
+    env.signatures.push(openaevc_crypto::sign_entry(
+        signer,
+        Domain::Object,
+        d.as_bytes(),
+    ));
     env.signatures.sort();
     env.signatures.dedup();
     Ok(env)
@@ -70,7 +77,11 @@ impl ImmutableObject {
         Self::validate(&envelope)?;
         let bytes: Arc<[u8]> = openaevc_canonical::to_canonical(&envelope)?.into();
         let digest = openaevc_crypto::sha256(&bytes);
-        Ok(Self { envelope, bytes, digest })
+        Ok(Self {
+            envelope,
+            bytes,
+            digest,
+        })
     }
 
     /// Strictly decodes canonical bytes. When `expected` is given the digest must match
@@ -87,14 +98,21 @@ impl ImmutableObject {
         }
         let envelope: ObjectEnvelope = openaevc_canonical::from_canonical(bytes)?;
         Self::validate(&envelope)?;
-        Ok(Self { envelope, bytes: bytes.into(), digest })
+        Ok(Self {
+            envelope,
+            bytes: bytes.into(),
+            digest,
+        })
     }
 
     fn validate(env: &ObjectEnvelope) -> Result<(), ProtocolError> {
         if !SUPPORTED_PROTOCOL.contains(env.protocol_version) {
             return Err(ProtocolError::new(
                 ErrorCode::ProtocolVersionUnsupported,
-                format!("object protocol version {} is not supported", env.protocol_version),
+                format!(
+                    "object protocol version {} is not supported",
+                    env.protocol_version
+                ),
             ));
         }
         validate_body(env.kind, &env.body)?;
@@ -140,7 +158,12 @@ impl ImmutableObject {
             | ObjectKind::ExtensionManifest
             | ObjectKind::Receipt
             | ObjectKind::JournalCheckpoint => vec![],
-            ObjectKind::CapabilityGrant => self.body::<SignedGrant>()?.body.parent.into_iter().collect(),
+            ObjectKind::CapabilityGrant => self
+                .body::<SignedGrant>()?
+                .body
+                .parent
+                .into_iter()
+                .collect(),
             ObjectKind::Revocation => vec![self.body::<Revocation>()?.grant_digest],
             ObjectKind::PolicyDecision => self.body::<PolicyDecision>()?.policies,
             ObjectKind::Candidate => {
@@ -149,26 +172,43 @@ impl ImmutableObject {
                     .iter()
                     .flat_map(|e| {
                         let p = &e.provenance;
-                        p.grants.iter().chain(&p.inputs).copied().chain(p.extension.as_ref().map(|x| x.manifest_digest))
+                        p.grants
+                            .iter()
+                            .chain(&p.inputs)
+                            .copied()
+                            .chain(p.extension.as_ref().map(|x| x.manifest_digest))
                     })
                     .collect()
             }
             ObjectKind::Observation => {
                 let o: Observation = self.body()?;
                 let p = o.provenance;
-                o.blob.into_iter().chain(p.grants).chain(p.inputs).chain(p.extension.map(|x| x.manifest_digest)).collect()
+                o.blob
+                    .into_iter()
+                    .chain(p.grants)
+                    .chain(p.inputs)
+                    .chain(p.extension.map(|x| x.manifest_digest))
+                    .collect()
             }
             ObjectKind::Evidence => {
                 let e: Evidence = self.body()?;
-                std::iter::once(e.payload).chain(e.extension.map(|x| x.manifest_digest)).collect()
+                std::iter::once(e.payload)
+                    .chain(e.extension.map(|x| x.manifest_digest))
+                    .collect()
             }
             ObjectKind::VerificationResult => {
                 let v: VerificationResult = self.body()?;
-                v.evidence.into_iter().chain(v.extension.map(|x| x.manifest_digest)).collect()
+                v.evidence
+                    .into_iter()
+                    .chain(v.extension.map(|x| x.manifest_digest))
+                    .collect()
             }
             ObjectKind::EvaluationResult => {
                 let v: EvaluationResult = self.body()?;
-                v.inputs.into_iter().chain(v.extension.map(|x| x.manifest_digest)).collect()
+                v.inputs
+                    .into_iter()
+                    .chain(v.extension.map(|x| x.manifest_digest))
+                    .collect()
             }
             ObjectKind::PromotionRecord => vec![self.body::<PromotionRecord>()?.policy_decision],
             ObjectKind::PromotedPack => {
@@ -215,7 +255,10 @@ mod tests {
     }
 
     fn blob() -> ObjectEnvelope {
-        env(ObjectKind::Blob, json!({"media_type": "text/plain", "data": "aGk"}))
+        env(
+            ObjectKind::Blob,
+            json!({"media_type": "text/plain", "data": "aGk"}),
+        )
     }
 
     #[test]
@@ -230,14 +273,25 @@ mod tests {
     fn from_bytes_rejects_digest_mismatch() {
         let o = ImmutableObject::build(blob()).unwrap();
         let wrong = openaevc_crypto::sha256(b"other");
-        assert_eq!(ImmutableObject::from_bytes(o.bytes(), Some(wrong)).unwrap_err().code, ErrorCode::DigestMismatch);
+        assert_eq!(
+            ImmutableObject::from_bytes(o.bytes(), Some(wrong))
+                .unwrap_err()
+                .code,
+            ErrorCode::DigestMismatch
+        );
     }
 
     #[test]
     fn body_must_match_kind_schema() {
         let bad = env(ObjectKind::Blob, json!({"media_type": "text/plain"}));
-        assert_eq!(ImmutableObject::build(bad).unwrap_err().code, ErrorCode::InvalidArgument);
-        let extra = env(ObjectKind::Blob, json!({"media_type": "a", "data": "aGk", "x": 1}));
+        assert_eq!(
+            ImmutableObject::build(bad).unwrap_err().code,
+            ErrorCode::InvalidArgument
+        );
+        let extra = env(
+            ObjectKind::Blob,
+            json!({"media_type": "a", "data": "aGk", "x": 1}),
+        );
         assert!(ImmutableObject::build(extra).is_err());
     }
 
@@ -245,7 +299,10 @@ mod tests {
     fn unsupported_protocol_version_rejected() {
         let mut e = blob();
         e.protocol_version = openaevc_protocol::ProtocolVersion::new(9, 0, 0);
-        assert_eq!(ImmutableObject::build(e).unwrap_err().code, ErrorCode::ProtocolVersionUnsupported);
+        assert_eq!(
+            ImmutableObject::build(e).unwrap_err().code,
+            ErrorCode::ProtocolVersionUnsupported
+        );
     }
 
     #[test]
@@ -254,11 +311,17 @@ mod tests {
         let signed = sign_envelope(blob(), &key).unwrap();
         let o = ImmutableObject::build(signed.clone()).unwrap();
         assert_eq!(o.envelope().signatures.len(), 1);
-        assert_eq!(signing_digest(o.envelope()).unwrap(), signing_digest(&blob()).unwrap());
+        assert_eq!(
+            signing_digest(o.envelope()).unwrap(),
+            signing_digest(&blob()).unwrap()
+        );
         // Tamper: signature from another envelope.
         let mut forged = signed;
         forged.created_seq = 2;
-        assert_eq!(ImmutableObject::build(forged).unwrap_err().code, ErrorCode::Unauthorized);
+        assert_eq!(
+            ImmutableObject::build(forged).unwrap_err().code,
+            ErrorCode::Unauthorized
+        );
     }
 
     #[test]
@@ -273,19 +336,26 @@ mod tests {
     #[test]
     fn references_follow_kind() {
         let d = openaevc_crypto::sha256(b"x");
-        let rec = env(ObjectKind::PromotionRecord, json!({
-            "id": "pro_agjdus24nvyadaareizuivlgo4",
-            "pack": "cpk_agjdus24nvyadaareizuivlgo4",
-            "generation": 1,
-            "candidate": d.to_string(),
-            "policy_decision": d.to_string(),
-            "promoted_by": "pri_agjdus24nvyadaareizuivlgo4",
-            "promoted_at": "2024-01-01T00:00:00.000000000Z",
-            "request_id": "req_agjdus24nvyadaareizuivlgo4"
-        }));
+        let rec = env(
+            ObjectKind::PromotionRecord,
+            json!({
+                "id": "pro_agjdus24nvyadaareizuivlgo4",
+                "pack": "cpk_agjdus24nvyadaareizuivlgo4",
+                "generation": 1,
+                "candidate": d.to_string(),
+                "policy_decision": d.to_string(),
+                "promoted_by": "pri_agjdus24nvyadaareizuivlgo4",
+                "promoted_at": "2024-01-01T00:00:00.000000000Z",
+                "request_id": "req_agjdus24nvyadaareizuivlgo4"
+            }),
+        );
         let o = ImmutableObject::build(rec).unwrap();
         assert_eq!(o.references().unwrap(), vec![d]);
-        assert!(ImmutableObject::build(blob()).unwrap().references().unwrap().is_empty());
+        assert!(ImmutableObject::build(blob())
+            .unwrap()
+            .references()
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

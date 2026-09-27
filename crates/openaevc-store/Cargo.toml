@@ -1,0 +1,28 @@
+[package]
+name = "openaevc-store"
+description = "OpenAEVC persistence: store traits, in-memory backend, SQLite + filesystem CAS reference backend."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Deterministic crash injection between commit stages (tests only).
+fault-injection = []
+
+[dependencies]
+openaevc-protocol.workspace = true
+openaevc-canonical.workspace = true
+openaevc-crypto.workspace = true
+openaevc-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rusqlite.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+openaevc-store = { path = ".", features = ["fault-injection"] }

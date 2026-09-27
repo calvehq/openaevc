@@ -349,7 +349,9 @@ pub struct PromotedPack {
     pub provenance_root: Digest,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CompositionEdgeKind {
     Requires,
@@ -358,7 +360,9 @@ pub enum CompositionEdgeKind {
     RevisionRelation,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct CompositionEdge {
     pub from: Digest,
@@ -422,7 +426,10 @@ mod tests {
 
     #[test]
     fn object_kind_names() {
-        assert_eq!(serde_json::to_value(ObjectKind::PromotedPack).unwrap(), json!("promoted_pack"));
+        assert_eq!(
+            serde_json::to_value(ObjectKind::PromotedPack).unwrap(),
+            json!("promoted_pack")
+        );
         assert_eq!(ObjectKind::JournalCheckpoint.as_str(), "journal_checkpoint");
         assert_eq!(ObjectKind::ALL.len(), 16);
     }
