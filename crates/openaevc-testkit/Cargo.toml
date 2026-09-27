@@ -19,6 +19,7 @@ openaevc-core.workspace = true
 openaevc-authority.workspace = true
 openaevc-store.workspace = true
 openaevc-runtime.workspace = true
+openaevc-execution.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

@@ -535,3 +535,42 @@ mod props {
         }
     }
 }
+
+#[test]
+fn scope_authorization_requires_covering_selectors() {
+    let mut w = World::new();
+    let alice = w.key_principal();
+    let mut b = w.body(w.root(), alice, &["kv.write"]);
+    b.resources = vec![ResourceSelector {
+        kind: "kv.entry".into(),
+        locator_prefix: Some("app/".into()),
+    }];
+    let g = w.sign(b);
+    let d = w.add(g);
+    let sel = |p: &str| ResourceSelector {
+        kind: "kv.entry".into(),
+        locator_prefix: Some(p.into()),
+    };
+    assert_eq!(
+        authorize_scope(&w, w.now, alice, "kv.write", &sel("app/x/"))
+            .unwrap()
+            .grants,
+        vec![d]
+    );
+    assert_eq!(
+        authorize_scope(&w, w.now, alice, "kv.write", &sel("other/"))
+            .unwrap_err()
+            .code,
+        ErrorCode::Forbidden
+    );
+    let everything = ResourceSelector {
+        kind: "*".into(),
+        locator_prefix: None,
+    };
+    assert!(authorize_scope(&w, w.now, alice, "kv.write", &everything).is_err());
+    assert!(
+        authorize_scope(&w, w.now, w.root(), "kv.write", &everything)
+            .unwrap()
+            .root
+    );
+}

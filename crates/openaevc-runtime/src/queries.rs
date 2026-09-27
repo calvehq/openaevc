@@ -202,6 +202,27 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
                     .collect(),
             ))
         }
+        GetExecution { execution } => {
+            read(tx)?;
+            let e: Option<openaevc_protocol::Execution> =
+                tx.peek(records::EXECUTION, &records::key(&tx.ns, execution))?;
+            to_json(&e.ok_or_else(|| {
+                err::not_found(format!("execution {execution} not found")).with_object(execution)
+            })?)
+        }
+        ListExecutions { pack, state } => {
+            read(tx)?;
+            let all = tx.peek_list::<openaevc_protocol::Execution>(
+                records::EXECUTION,
+                &records::prefix(&tx.ns),
+            )?;
+            let out: Vec<_> = all
+                .into_iter()
+                .map(|(_, e)| e)
+                .filter(|e| pack.is_none_or(|p| p == e.pack) && state.is_none_or(|s| s == e.state))
+                .collect();
+            to_json(&out)
+        }
         other => Err(err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()

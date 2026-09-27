@@ -145,7 +145,9 @@ pub(crate) fn update_work_unit(
 ) -> Result<CommandResult> {
     authz(tx, ctx, "changepack.mutate", None)?;
     let mut p = packs::load_mutable(tx, pack, expected)?;
-    let active = tx.peek::<ExecutionId>(records::WU_EXECUTION, &records::key(&tx.ns, wu))?;
+    let active = tx
+        .peek::<Option<ExecutionId>>(records::WU_EXECUTION, &records::key(&tx.ns, wu))?
+        .flatten();
     let unit = p
         .work_units
         .iter_mut()
@@ -326,8 +328,9 @@ pub(crate) fn work_status(tx: &Tx<'_>, only: Option<PackId>, ready: bool) -> Res
                     waiting.push(json!({"node": y, "via": x, "reason": reason}));
                 }
             }
-            let executing =
-                tx.peek::<ExecutionId>(records::WU_EXECUTION, &records::key(&tx.ns, w.id))?;
+            let executing = tx
+                .peek::<Option<ExecutionId>>(records::WU_EXECUTION, &records::key(&tx.ns, w.id))?
+                .flatten();
             if p.state != PackState::Open {
                 waiting.push(json!({"node": p.id, "via": w.id, "reason": format!("pack is {}", p.state.as_str())}));
             }

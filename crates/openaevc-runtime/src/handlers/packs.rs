@@ -74,14 +74,12 @@ pub(crate) fn save(tx: &mut Tx<'_>, p: &mut ChangePack, new_generation: bool) ->
     }
     p.updated_at = tx.now;
     tx.put(records::PACK, &key(tx, p.id), p)?;
-    if new_generation {
-        tx.put(
-            records::PACK_GENERATION,
-            &records::generation_key(&tx.ns, p.id, p.generation),
-            p,
-        )?;
-    }
-    Ok(())
+    // History keeps the latest state of every generation (effects accumulate within one).
+    tx.put(
+        records::PACK_GENERATION,
+        &records::generation_key(&tx.ns, p.id, p.generation),
+        p,
+    )
 }
 
 fn validate_resource(r: &ResourceRef) -> Result<()> {
@@ -297,10 +295,11 @@ pub(crate) fn seal(tx: &mut Tx<'_>, ctx: &Ctx, id: PackId, expected: u64) -> Res
     check_generation(&p, expected)?;
     for wu in &p.work_units {
         if tx
-            .peek::<openaevc_protocol::ExecutionId>(
+            .peek::<Option<openaevc_protocol::ExecutionId>>(
                 records::WU_EXECUTION,
                 &records::key(&tx.ns, wu.id),
             )?
+            .flatten()
             .is_some()
         {
             return Err(err::conflict(format!(
