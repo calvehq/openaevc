@@ -21,6 +21,7 @@ openaevc-policy.workspace = true
 openaevc-extension-contract.workspace = true
 openaevc-execution.workspace = true
 openaevc-verification.workspace = true
+openaevc-composition.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

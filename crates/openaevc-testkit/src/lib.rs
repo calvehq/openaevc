@@ -912,3 +912,20 @@ impl Harness {
         (pack, self.promote(who, ns, pack).expect("promote"))
     }
 }
+
+impl Harness {
+    pub fn create_baseline(
+        &self,
+        who: &Identity,
+        ns: NamespaceId,
+        members: Vec<Digest>,
+        edges: Vec<CompositionEdge>,
+    ) -> Result<CommandReceipt, ProtocolError> {
+        self.client(who, ns).cmd(Command::CreateBaseline {
+            members,
+            edges,
+            policies: vec![],
+            metadata: BTreeMap::new(),
+        })
+    }
+}

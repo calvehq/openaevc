@@ -1,6 +1,7 @@
 //! Command handlers. Each handler authorizes, validates, stages state changes and emits at
 //! least one journal event through the transaction; the caller commits atomically.
 
+pub(crate) mod baseline;
 pub(crate) mod evidence;
 mod execution;
 mod extensions;
@@ -195,6 +196,12 @@ pub(crate) fn dispatch(tx: &mut Tx<'_>, ctx: &Ctx, cmd: Command) -> Result<Comma
         RefreshQualification { pack, generation } => {
             evidence::refresh_qualification(tx, ctx, pack, generation)
         }
+        CreateBaseline {
+            members,
+            edges: e,
+            policies,
+            metadata,
+        } => baseline::create(tx, ctx, members, e, policies, metadata),
         other => Err(openaevc_protocol::err::invalid(format!(
             "{} is not supported by this runtime build",
             other.name()

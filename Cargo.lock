@@ -401,6 +401,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-composition"
+version = "0.1.0"
+dependencies = [
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "proptest",
+ "serde",
+]
+
+[[package]]
 name = "openaevc-core"
 version = "0.1.0"
 dependencies = [
@@ -507,6 +518,7 @@ version = "0.1.0"
 dependencies = [
  "openaevc-authority",
  "openaevc-canonical",
+ "openaevc-composition",
  "openaevc-core",
  "openaevc-crypto",
  "openaevc-execution",
