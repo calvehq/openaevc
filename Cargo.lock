@@ -836,6 +836,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "openaevc-examples"
+version = "0.1.0"
+dependencies = [
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-extension-contract",
+ "openaevc-protocol",
+ "openaevc-runtime",
+ "openaevc-sdk",
+ "openaevc-store",
+ "openaevc-testkit",
+ "openaevc-transport",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "openaevc-execution"
 version = "0.1.0"
 dependencies = [
@@ -886,6 +905,23 @@ dependencies = [
  "openaevc-protocol",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "openaevc-inspect"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "openaevc-canonical",
+ "openaevc-core",
+ "openaevc-crypto",
+ "openaevc-protocol",
+ "openaevc-store",
+ "openaevc-testkit",
+ "openaevc-transport",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

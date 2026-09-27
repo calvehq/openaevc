@@ -4,6 +4,7 @@
 //! * `sdk/typescript/src/generated.ts` — TypeScript types for every schema definition + constants;
 //! * `sdk/python/openaevc/_generated.py` — protocol constants;
 //! * `sdk/go/generated.go` — protocol constants.
+//!
 //! The handwritten SDK layers build on these. With `--check`, fails on any difference.
 
 use generate_schemas::{json_schema, root};
