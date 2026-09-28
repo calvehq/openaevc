@@ -165,19 +165,54 @@ fn decode_body(headers: &HeaderMap, body: &[u8]) -> Result<Value, ProtocolError>
     }
 }
 
+/// Percent-decoded values of every `name=value` pair in a query string. Undecodable values are
+/// kept verbatim (they then fail later validation).
+fn query_params(query: Option<&str>, name: &str) -> Vec<String> {
+    let decode = |v: &str| -> Option<String> {
+        let b = v.as_bytes();
+        let mut out = Vec::with_capacity(b.len());
+        let mut i = 0;
+        while i < b.len() {
+            match b[i] {
+                b'%' => {
+                    let h = std::str::from_utf8(b.get(i + 1..i + 3)?).ok()?;
+                    out.push(u8::from_str_radix(h, 16).ok()?);
+                    i += 3;
+                }
+                b'+' => {
+                    out.push(b' ');
+                    i += 1;
+                }
+                c => {
+                    out.push(c);
+                    i += 1;
+                }
+            }
+        }
+        String::from_utf8(out).ok()
+    };
+    query
+        .unwrap_or_default()
+        .split('&')
+        .filter_map(|kv| kv.split_once('='))
+        .filter(|(k, _)| *k == name)
+        .map(|(_, v)| decode(v).unwrap_or_else(|| v.to_owned()))
+        .collect()
+}
+
 /// Decodes the envelope carried in the `openaevc-envelope` header (or `envelope` query
 /// parameter): the value that was signed plus its parsed form for endpoint shape checks.
 fn decode_header<T: Serialize + DeserializeOwned>(
     headers: &HeaderMap,
     query: Option<&str>,
 ) -> Result<(Value, Envelope<T>), ProtocolError> {
-    let from_query = query.and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("envelope=")));
+    let from_query = query_params(query, "envelope").into_iter().next();
     let raw = headers
         .get(ENVELOPE_HEADER)
-        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.to_str().ok().map(str::to_owned))
         .or(from_query)
         .ok_or_else(|| ProtocolError::new(ErrorCode::Unauthorized, "missing signed envelope"))?;
-    let bytes = b64::decode(raw).map_err(|_| err::invalid("envelope header is not base64url"))?;
+    let bytes = b64::decode(&raw).map_err(|_| err::invalid("envelope header is not base64url"))?;
     let value = openaevc_canonical::decode(&bytes)?;
     let env = serde_json::from_value(value.clone())
         .map_err(|e| err::invalid(format!("invalid request envelope: {e}")))?;
@@ -198,7 +233,16 @@ async fn blocking<T: Send + 'static>(
     let r = match tokio::time::timeout(s.cfg.request_timeout, task).await {
         Ok(Ok(r)) => r,
         Ok(Err(_)) => Err(err::internal("request handler failed")),
-        Err(_) => Err(err::internal("request timed out")),
+        Err(_) => {
+            // The runtime may still commit the request: its outcome is unknown. Retrying is
+            // safe only with the *same* envelope (idempotent by request_id, AEVC-AUTH-0006); a
+            // freshly signed envelope could apply the command twice.
+            let mut e = err::internal(
+                "request timed out; outcome unknown: resend the same signed envelope to learn it",
+            );
+            e.retryable = false;
+            Err(e)
+        }
     };
     if r.is_err() {
         s.health.errors.fetch_add(1, Ordering::Relaxed);
@@ -309,13 +353,7 @@ fn sse_event(e: &openaevc_protocol::Event) -> SseEvent {
 async fn events(State(s): State<AppState>, RawQuery(q): RawQuery, headers: HeaderMap) -> Response {
     let setup = async {
         let (env, _): (Value, QueryEnvelope) = decode_header(&headers, q.as_deref())?;
-        let subjects: Vec<String> = q
-            .as_deref()
-            .unwrap_or_default()
-            .split('&')
-            .filter_map(|kv| kv.strip_prefix("subject="))
-            .map(str::to_owned)
-            .collect();
+        let subjects = query_params(q.as_deref(), "subject");
         let resume: Option<u64> = headers
             .get("last-event-id")
             .and_then(|v| v.to_str().ok())
@@ -467,17 +505,36 @@ pub fn tls_acceptor(
     Ok(tokio_rustls::TlsAcceptor::from(Arc::new(cfg)))
 }
 
-fn spawn_conn<IO>(io: IO, app: Router, graceful: &GracefulShutdown)
-where
+/// Concurrent connections served per listener; further clients wait in the accept backlog.
+const MAX_CONNECTIONS: usize = 1024;
+/// A client must finish sending request headers within this time (slow-header defence; hyper
+/// silently disables its default unless a timer is set).
+const HEADER_READ_TIMEOUT: Duration = Duration::from_secs(30);
+
+fn conn_builder() -> Builder<TokioExecutor> {
+    let mut b = Builder::new(TokioExecutor::new());
+    b.http1()
+        .timer(hyper_util::rt::TokioTimer::new())
+        .header_read_timeout(HEADER_READ_TIMEOUT);
+    b.http2().timer(hyper_util::rt::TokioTimer::new());
+    b
+}
+
+fn spawn_conn<IO>(
+    io: IO,
+    app: Router,
+    graceful: &GracefulShutdown,
+    permit: tokio::sync::OwnedSemaphorePermit,
+) where
     IO: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let svc = hyper_util::service::TowerToHyperService::new(app);
-    let builder = Builder::new(TokioExecutor::new());
-    let conn = builder
+    let conn = conn_builder()
         .serve_connection_with_upgrades(TokioIo::new(io), svc)
         .into_owned();
     let fut = graceful.watch(conn);
     tokio::spawn(async move {
+        let _permit = permit;
         if let Err(e) = fut.await {
             tracing::debug!(event = "transport.connection_error", error = %e);
         }
@@ -491,7 +548,11 @@ pub async fn serve(
     mut shutdown: watch::Receiver<bool>,
 ) -> std::io::Result<()> {
     let graceful = GracefulShutdown::new();
+    let slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
     loop {
+        let Ok(permit) = slots.clone().acquire_owned().await else {
+            break;
+        };
         tokio::select! {
             r = shutdown.changed() => {
                 if r.is_err() || *shutdown.borrow() {
@@ -499,15 +560,16 @@ pub async fn serve(
                 }
             }
             accepted = accept(&listener) => match accepted {
-                Ok(Conn::Plain(s)) => spawn_conn(s, app.clone(), &graceful),
+                Ok(Conn::Plain(s)) => spawn_conn(s, app.clone(), &graceful, permit),
                 Ok(Conn::Tls(s, acceptor)) => {
                     let app = app.clone();
                     let watcher = graceful.watcher();
                     tokio::spawn(async move {
+                        let _permit = permit;
                         match tokio::time::timeout(Duration::from_secs(10), acceptor.accept(s)).await {
                             Ok(Ok(tls)) => {
                                 let svc = hyper_util::service::TowerToHyperService::new(app);
-                                let conn = Builder::new(TokioExecutor::new()).serve_connection_with_upgrades(TokioIo::new(tls), svc).into_owned();
+                                let conn = conn_builder().serve_connection_with_upgrades(TokioIo::new(tls), svc).into_owned();
                                 let _ = watcher.watch(conn).await;
                             }
                             _ => tracing::debug!(event = "transport.tls_handshake_failed"),
@@ -515,7 +577,7 @@ pub async fn serve(
                     });
                 }
                 #[cfg(unix)]
-                Ok(Conn::Unix(s)) => spawn_conn(s, app.clone(), &graceful),
+                Ok(Conn::Unix(s)) => spawn_conn(s, app.clone(), &graceful, permit),
                 Err(e) => {
                     tracing::warn!(event = "transport.accept_failed", error = %e);
                     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -541,5 +603,19 @@ async fn accept(l: &Listener) -> std::io::Result<Conn> {
         Listener::Tls(t, a) => t.accept().await.map(|(s, _)| Conn::Tls(s, a.clone())),
         #[cfg(unix)]
         Listener::Unix(u) => u.accept().await.map(|(s, _)| Conn::Unix(s)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::query_params;
+
+    #[test]
+    fn query_values_are_percent_decoded() {
+        let q = Some("subject=sha256%3Aab&x=1&subject=cpk_a&envelope=QUJD");
+        assert_eq!(query_params(q, "subject"), ["sha256:ab", "cpk_a"]);
+        assert_eq!(query_params(q, "envelope"), ["QUJD"]);
+        assert!(query_params(None, "subject").is_empty());
+        assert_eq!(query_params(Some("subject=%zz"), "subject"), ["%zz"]);
     }
 }

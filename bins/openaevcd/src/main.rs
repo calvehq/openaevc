@@ -277,10 +277,27 @@ async fn run(config: Config, migrate: bool) -> Result<(), String> {
                     path.display()
                 ));
             }
+            // Only a stale socket is removed, never another kind of file.
+            use std::os::unix::fs::FileTypeExt;
+            let is_socket = std::fs::symlink_metadata(&path)
+                .map(|m| m.file_type().is_socket())
+                .unwrap_or(false);
+            if !is_socket {
+                return Err(format!(
+                    "{} exists and is not a socket; refusing to replace it",
+                    path.display()
+                ));
+            }
             let _ = std::fs::remove_file(&path);
         }
         let l = tokio::net::UnixListener::bind(&path)
             .map_err(|e| format!("cannot bind {}: {e}", path.display()))?;
+        // Owner-only: envelopes are signed, but /v1/info and /v1/metrics are not.
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+                .map_err(|e| format!("cannot restrict {}: {e}", path.display()))?;
+        }
         println!("listening unix {}", path.display());
         servers.push(tokio::spawn(server::serve(
             Listener::Unix(l),
