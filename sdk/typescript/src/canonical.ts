@@ -37,12 +37,18 @@ function encodeInto(v: Json, out: number[]): void {
     if (v >= 0) head(out, 0, v);
     else head(out, 1, -1 - v);
   } else if (typeof v === "string") {
+    // A lone surrogate would silently become U+FFFD: the signed value would differ from v.
+    if (!/^(?:[^\uD800-\uDFFF]|[\uD800-\uDBFF][\uDC00-\uDFFF])*$/.test(v))
+      throw new CanonicalError("text is not valid Unicode (lone surrogate)");
     const b = enc.encode(v);
     head(out, 3, b.length);
     for (const x of b) out.push(x);
   } else if (Array.isArray(v)) {
     head(out, 4, v.length);
     for (const item of v) encodeInto(item, out);
+  } else if (typeof v !== "object" || (Object.getPrototypeOf(v) !== Object.prototype && Object.getPrototypeOf(v) !== null)) {
+    // Byte arrays, Maps, class instances, bigints, functions: not in the JSON data model.
+    throw new CanonicalError("only plain objects, arrays, strings, integers and booleans are canonical");
   } else {
     const entries = Object.entries(v).map(([k, val]) => {
       const kb: number[] = [];

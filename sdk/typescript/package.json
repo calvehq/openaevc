@@ -12,6 +12,7 @@
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "e2e": "node --experimental-strip-types test/e2e.ts"
   },
   "devDependencies": {

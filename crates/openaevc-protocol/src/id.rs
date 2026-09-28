@@ -116,8 +116,12 @@ macro_rules! typed_ids {
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
                     let err = |reason| IdParseError { expected: $prefix, input: s.to_owned(), reason };
+                    // Case-insensitive (ASCII only), AEVC-ID-0001.
+                    let head = concat!($prefix, "_");
                     let rest = s
-                        .strip_prefix(concat!($prefix, "_"))
+                        .get(..head.len())
+                        .filter(|h| h.eq_ignore_ascii_case(head))
+                        .map(|_| &s[head.len()..])
                         .ok_or_else(|| err("wrong prefix"))?;
                     let bytes = decode(rest).map_err(err)?;
                     check_uuidv7(&bytes).map_err(err)?;
@@ -160,6 +164,9 @@ macro_rules! typed_ids {
         }
 
         impl AnyId {
+            /// Every typed identifier prefix.
+            pub const PREFIXES: &'static [&'static str] = &[$($prefix,)*];
+
             pub fn prefix(&self) -> &'static str {
                 match self {
                     $(AnyId::$name(_) => $prefix,)*
@@ -185,8 +192,8 @@ macro_rules! typed_ids {
             type Err = IdParseError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let prefix = s.split('_').next().unwrap_or_default();
-                match prefix {
+                let prefix = s.split('_').next().unwrap_or_default().to_ascii_lowercase();
+                match prefix.as_str() {
                     $($prefix => s.parse().map(AnyId::$name),)*
                     _ => Err(IdParseError { expected: "typed", input: s.to_owned(), reason: "unknown prefix" }),
                 }

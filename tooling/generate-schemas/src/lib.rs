@@ -60,7 +60,8 @@ pub fn json_schema() -> Value {
         p::ProviderDescriptor,
         p::Facts,
     );
-    let defs: BTreeMap<String, Value> = gen.take_definitions(true).into_iter().collect();
+    let mut defs: BTreeMap<String, Value> = gen.take_definitions(true).into_iter().collect();
+    defs.values_mut().for_each(strip_null);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://openaevc.org/schemas/0.1.0/openaevc.schema.json",
@@ -68,6 +69,39 @@ pub fn json_schema() -> Value {
         "description": "JSON representation of OpenAEVC protocol types. Canonical CBOR uses the same data model (spec/canonical-encoding.md).",
         "$defs": defs,
     })
+}
+
+/// Absent optional values are omitted, never `null` (AEVC-ENC-0001, AEVC-ENC-0003): removes the
+/// `null` alternatives schemars adds for `Option<T>`.
+fn strip_null(v: &mut Value) {
+    match v {
+        Value::Object(m) => {
+            if let Some(Value::Array(types)) = m.get_mut("type") {
+                types.retain(|t| t != "null");
+                if types.len() == 1 {
+                    let only = types.remove(0);
+                    m.insert("type".into(), only);
+                }
+            }
+            for key in ["anyOf", "oneOf"] {
+                if let Some(Value::Array(alts)) = m.get_mut(key) {
+                    alts.retain(|a| a != &json!({"type": "null"}));
+                    if alts.len() == 1 {
+                        let only = alts.remove(0);
+                        m.remove(key);
+                        if let Value::Object(o) = only {
+                            for (k, val) in o {
+                                m.entry(k).or_insert(val);
+                            }
+                        }
+                    }
+                }
+            }
+            m.values_mut().for_each(strip_null);
+        }
+        Value::Array(a) => a.iter_mut().for_each(strip_null),
+        _ => {}
+    }
 }
 
 fn cddl_type(v: &Value) -> String {

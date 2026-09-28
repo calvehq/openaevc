@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { encode, decode, type Json } from "../src/canonical.ts";
-import { sha256, SigningKey, verify } from "../src/crypto.ts";
+import { sha256, signingDigest, SigningKey, verify } from "../src/crypto.ts";
 import { parseId, newId } from "../src/ids.ts";
 
 const root = new URL("../../../fixtures/", import.meta.url);
@@ -37,6 +37,7 @@ test("object fixtures decode, re-encode and hash identically", () => {
       const { signatures, ...unsigned } = c.json;
       const sd = encode(unsigned);
       assert.equal(sha256(sd), c.signing_digest, c.name);
+      assert.equal(signingDigest(c.json), c.signing_digest, c.name);
       for (const s of signatures) assert.ok(verify(s.public_key, "object", rawSha256(sd), s.signature), c.name);
     }
   }
@@ -55,10 +56,15 @@ test("signature fixtures are reproducible", () => {
   }
 });
 
+test("invalid signatures are rejected", () => {
+  const f = load("canonical/signatures.json");
+  for (const c of f.invalid) assert.ok(!verify(c.public_key, c.domain, unhex(c.message_hex), c.signature), c.name);
+});
+
 test("identifiers", () => {
   const f = load("canonical/identifiers.json");
   for (const s of f.valid) if (/^[a-z]{2,3}_/i.test(s)) assert.equal(parseId(s), s.toLowerCase());
-  for (const s of f.invalid) if (/^[a-z]{2,3}_/i.test(s)) assert.throws(() => parseId(s), Error, s);
+  for (const s of f.invalid) if (s.includes("_") && !s.startsWith("sha256")) assert.throws(() => parseId(s), Error, s);
   const id = newId("cpk");
   assert.equal(parseId(id, "cpk"), id);
 });

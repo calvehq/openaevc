@@ -8,7 +8,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from openaevc import Client, Session, SigningKey  # noqa: E402
+from openaevc import Client, ProtocolError, Session, SigningKey  # noqa: E402
 
 endpoint = os.environ["OPENAEVC_ENDPOINT"]
 admin = json.loads(pathlib.Path(os.environ["OPENAEVC_ADMIN_KEY"]).read_text())
@@ -43,4 +43,14 @@ c.get_object(candidate)
 for e in c.events(kinds=["changepack.promoted"]):
     assert e["body"]["pack"] == pack
     break
+# Digest subjects survive the query string.
+for e in c.events(subjects=[promoted]):
+    assert promoted in e["subjects"]
+    break
+# Protocol error codes reach the caller intact.
+try:
+    c.seal(pack, 2)
+    raise AssertionError("sealing a promoted pack succeeded")
+except ProtocolError as err:
+    assert err.code == "IMMUTABLE_OBJECT", err.code
 print(f"python e2e ok {promoted}")

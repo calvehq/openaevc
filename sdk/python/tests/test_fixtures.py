@@ -41,6 +41,7 @@ class Canonical(unittest.TestCase):
                 unsigned = {k: v for k, v in c["json"].items() if k != "signatures"}
                 sd = encode(unsigned)
                 self.assertEqual(crypto.sha256(sd), c["signing_digest"], c["name"])
+                self.assertEqual(crypto.signing_digest(c["json"]), c["signing_digest"], c["name"])
                 for s in c["json"]["signatures"]:
                     msg = hashlib.sha256(sd).digest()
                     self.assertTrue(crypto.verify(s["public_key"], "object", msg, s["signature"]))
@@ -59,6 +60,11 @@ class Signatures(unittest.TestCase):
             self.assertTrue(crypto.verify(c["public_key"], c["domain"], msg, c["signature"]))
             other = "grant" if c["domain"] == "request" else "request"
             self.assertFalse(crypto.verify(c["public_key"], other, msg, c["signature"]))
+
+    def test_invalid_signatures_rejected(self):
+        for c in load("canonical/signatures.json")["invalid"]:
+            msg = bytes.fromhex(c["message_hex"])
+            self.assertFalse(crypto.verify(c["public_key"], c["domain"], msg, c["signature"]), c["name"])
 
     def test_pure_python_ed25519_matches(self):
         from openaevc import ed25519

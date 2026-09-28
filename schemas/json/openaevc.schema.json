@@ -250,14 +250,7 @@
           }
         },
         "revision": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RevisionInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/RevisionInfo"
         },
         "candidate_effects": {
           "type": "array",
@@ -267,44 +260,16 @@
           "description": "Effects accepted into the candidate so far (bound to `generation`)."
         },
         "sealed": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SealInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/SealInfo"
         },
         "qualification": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/QualificationInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/QualificationInfo"
         },
         "quarantine": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/QuarantineInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/QuarantineInfo"
         },
         "promotion": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PromotionInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PromotionInfo"
         },
         "metadata": {
           "type": "object",
@@ -391,10 +356,7 @@
               "$ref": "#/$defs/GrantId"
             },
             "reason": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             },
             "type": {
               "type": "string",
@@ -548,46 +510,31 @@
             },
             "intent": true,
             "resource_refs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/$defs/ResourceRef"
               }
             },
             "required_policies": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/$defs/Digest"
               }
             },
             "extension_bindings": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "type": "string"
               }
             },
             "conflicts_with": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/$defs/Digest"
               }
             },
             "metadata": {
-              "type": [
-                "object",
-                "null"
-              ],
+              "type": "object",
               "additionalProperties": true
             },
             "type": {
@@ -653,14 +600,7 @@
             },
             "spec": true,
             "state": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/WorkUnitState"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/WorkUnitState"
             },
             "type": {
               "type": "string",
@@ -908,10 +848,7 @@
               "$ref": "#/$defs/ExecutionId"
             },
             "reason": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             },
             "type": {
               "type": "string",
@@ -963,14 +900,7 @@
             },
             "payload": true,
             "blob": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/Blob"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/Blob"
             },
             "related_resources": {
               "type": "array",
@@ -1064,14 +994,7 @@
               "$ref": "#/$defs/Blob"
             },
             "schema": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/SchemaRef"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/SchemaRef"
             },
             "sources": {
               "type": "array",
@@ -1080,10 +1003,7 @@
               }
             },
             "extension": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             },
             "type": {
               "type": "string",
@@ -1284,28 +1204,14 @@
           "$ref": "#/$defs/RequestId"
         },
         "namespace": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/NamespaceId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/NamespaceId"
         },
         "caller": {
           "$ref": "#/$defs/PrincipalId"
         },
         "act_as": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PrincipalId"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "ACTOR principal linked to `caller` on whose behalf the request is made."
+          "description": "ACTOR principal linked to `caller` on whose behalf the request is made.",
+          "$ref": "#/$defs/PrincipalId"
         },
         "nonce": {
           "type": "string"
@@ -1314,27 +1220,13 @@
           "$ref": "#/$defs/Timestamp"
         },
         "expires_at": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Timestamp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Timestamp"
         },
         "body": {
           "$ref": "#/$defs/Command"
         },
         "signature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Signature"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Signature"
         }
       },
       "required": [
@@ -1385,10 +1277,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "ids": {
           "type": "array",
@@ -1397,14 +1286,7 @@
           }
         },
         "digest": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Digest"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Digest"
         },
         "digests": {
           "type": "array",
@@ -1413,28 +1295,15 @@
           }
         },
         "generation": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": "integer",
           "format": "uint64",
           "minimum": 0
         },
         "state": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "lease": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Lease"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Lease"
         }
       },
       "description": "Result data of a successful command (also embedded in its receipt)."
@@ -1453,14 +1322,7 @@
           "$ref": "#/$defs/CompositionEdgeKind"
         },
         "relation": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RevisionRelation"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/RevisionRelation"
         }
       },
       "required": [
@@ -1662,14 +1524,7 @@
           "type": "string"
         },
         "extension": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExtensionRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExtensionRef"
         },
         "config": true,
         "verdict": {
@@ -1760,24 +1615,10 @@
           "$ref": "#/$defs/RuntimeInstanceId"
         },
         "request_id": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RequestId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/RequestId"
         },
         "actor": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PrincipalId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PrincipalId"
         },
         "kind": {
           "type": "string"
@@ -1883,14 +1724,7 @@
           "type": "string"
         },
         "schema": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SchemaRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/SchemaRef"
         },
         "sources": {
           "type": "array",
@@ -1899,14 +1733,7 @@
           }
         },
         "extension": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExtensionRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExtensionRef"
         },
         "created_at": {
           "$ref": "#/$defs/Timestamp"
@@ -1973,14 +1800,7 @@
           "type": "string"
         },
         "worker": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkerInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/WorkerInfo"
         },
         "state": {
           "$ref": "#/$defs/ExecutionState"
@@ -2041,24 +1861,10 @@
           "type": "string"
         },
         "retry_of": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExecutionId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExecutionId"
         },
         "lease": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Lease"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Lease"
         },
         "request_id": {
           "$ref": "#/$defs/RequestId"
@@ -2070,20 +1876,10 @@
           "$ref": "#/$defs/Timestamp"
         },
         "finished_at": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Timestamp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Timestamp"
         },
         "failure": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "effects": {
           "type": "array",
@@ -2144,14 +1940,7 @@
           "type": "string"
         },
         "worker": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkerInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/WorkerInfo"
         },
         "allowed_resources": {
           "type": "array",
@@ -2192,14 +1981,7 @@
           "type": "string"
         },
         "retry_of": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExecutionId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExecutionId"
         }
       },
       "required": [
@@ -2461,14 +2243,7 @@
           "$ref": "#/$defs/VersionRange"
         },
         "publisher": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PublicKey"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PublicKey"
         },
         "artifact_digest": {
           "$ref": "#/$defs/Digest",
@@ -2653,14 +2428,7 @@
           "type": "string"
         },
         "resource": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResourceRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ResourceRef"
         }
       },
       "required": [
@@ -2714,14 +2482,7 @@
           "minimum": 0
         },
         "parent": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Digest"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Digest"
         },
         "nonce": {
           "type": "string"
@@ -2913,24 +2674,10 @@
           "$ref": "#/$defs/PrincipalKind"
         },
         "public_key": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PublicKey"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PublicKey"
         },
         "linked_to": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PrincipalId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PrincipalId"
         },
         "attributes": {
           "type": "object",
@@ -2963,10 +2710,7 @@
           "$ref": "#/$defs/NamespaceId"
         },
         "id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "created_seq": {
           "type": "integer",
@@ -3047,14 +2791,7 @@
         },
         "payload": true,
         "blob": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Digest"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Digest"
         },
         "related_resources": {
           "type": "array",
@@ -3201,10 +2938,7 @@
           "description": "Namespaced policy name, e.g. `org.example.release-gates`."
         },
         "description": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "rules": {
           "type": "array",
@@ -3249,24 +2983,10 @@
           "$ref": "#/$defs/PrincipalKind"
         },
         "public_key": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PublicKey"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PublicKey"
         },
         "linked_to": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PrincipalId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/PrincipalId"
         },
         "attributes": {
           "type": "object",
@@ -3341,14 +3061,7 @@
           }
         },
         "revision": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RevisionInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/RevisionInfo"
         },
         "verifications": {
           "type": "array",
@@ -3490,46 +3203,23 @@
           }
         },
         "expected_generation": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": "integer",
           "format": "uint64",
           "minimum": 0
         },
         "actual_generation": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": "integer",
           "format": "uint64",
           "minimum": 0
         },
         "missing_action": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "transition": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TransitionInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/TransitionInfo"
         },
         "extension_error": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExtensionErrorInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExtensionErrorInfo"
         },
         "cycle": {
           "type": "array",
@@ -3565,23 +3255,13 @@
           "type": "string"
         },
         "worker": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "harness": {
           "type": "string"
         },
         "extension": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExtensionRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExtensionRef"
         },
         "grants": {
           "type": "array",
@@ -3817,14 +3497,7 @@
               "type": "string"
             },
             "resource": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/ResourceRef"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/ResourceRef"
             },
             "type": {
               "type": "string",
@@ -3845,10 +3518,7 @@
               "$ref": "#/$defs/PackId"
             },
             "generation": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "uint64",
               "minimum": 0
             },
@@ -3870,10 +3540,7 @@
               "$ref": "#/$defs/PackId"
             },
             "generation": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "uint64",
               "minimum": 0
             },
@@ -3892,14 +3559,7 @@
           "additionalProperties": false,
           "properties": {
             "pack": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PackId"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/PackId"
             },
             "type": {
               "type": "string",
@@ -3969,14 +3629,7 @@
           "additionalProperties": false,
           "properties": {
             "pack": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PackId"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/PackId"
             },
             "type": {
               "type": "string",
@@ -3992,14 +3645,7 @@
           "additionalProperties": false,
           "properties": {
             "pack": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PackId"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/PackId"
             },
             "type": {
               "type": "string",
@@ -4032,24 +3678,10 @@
           "additionalProperties": false,
           "properties": {
             "pack": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PackId"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/PackId"
             },
             "state": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/ExecutionState"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/ExecutionState"
             },
             "type": {
               "type": "string",
@@ -4133,24 +3765,10 @@
           "additionalProperties": false,
           "properties": {
             "pack": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/PackId"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/PackId"
             },
             "digest": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/Digest"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/Digest"
             },
             "type": {
               "type": "string",
@@ -4308,30 +3926,13 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/ObjectKind"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/ObjectKind"
             },
             "after": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/Digest"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/$defs/Digest"
             },
             "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "uint32",
               "minimum": 0
             },
@@ -4355,10 +3956,7 @@
               "default": 0
             },
             "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "uint32",
               "minimum": 0
             },
@@ -4416,28 +4014,14 @@
           "$ref": "#/$defs/RequestId"
         },
         "namespace": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/NamespaceId"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/NamespaceId"
         },
         "caller": {
           "$ref": "#/$defs/PrincipalId"
         },
         "act_as": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/PrincipalId"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "ACTOR principal linked to `caller` on whose behalf the request is made."
+          "description": "ACTOR principal linked to `caller` on whose behalf the request is made.",
+          "$ref": "#/$defs/PrincipalId"
         },
         "nonce": {
           "type": "string"
@@ -4446,27 +4030,13 @@
           "$ref": "#/$defs/Timestamp"
         },
         "expires_at": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Timestamp"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Timestamp"
         },
         "body": {
           "$ref": "#/$defs/Query"
         },
         "signature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Signature"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Signature"
         }
       },
       "required": [
@@ -4541,10 +4111,7 @@
           "type": "string"
         },
         "description": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         }
       },
       "required": [
@@ -4562,14 +4129,7 @@
           "type": "string"
         },
         "version": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Digest"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/Digest"
         },
         "extension": {
           "type": "string",
@@ -4591,10 +4151,7 @@
           "type": "string"
         },
         "locator_prefix": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         }
       },
       "required": [
@@ -4647,10 +4204,7 @@
           "$ref": "#/$defs/Timestamp"
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         }
       },
       "required": [
@@ -4867,14 +4421,7 @@
           "type": "string"
         },
         "extension": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExtensionRef"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/$defs/ExtensionRef"
         },
         "config": true,
         "status": {

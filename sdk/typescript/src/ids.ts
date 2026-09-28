@@ -42,6 +42,8 @@ const ID_RE = /^([a-z]{2,3})_([a-z2-7]{26})$/;
 
 /** Validates a typed ID (case-insensitive input) and returns its canonical lowercase form. */
 export function parseId(text: string, prefix?: string): string {
+  // Case folding is ASCII-only (a Unicode fold would turn U+212A KELVIN SIGN into "k").
+  if (!/^[\x21-\x7e]*$/.test(text)) throw new Error(`invalid identifier ${text}`);
   const lower = text.toLowerCase();
   const m = ID_RE.exec(lower);
   if (!m || !(ID_PREFIXES as readonly string[]).includes(m[1]) || (prefix && m[1] !== prefix)) throw new Error(`invalid identifier ${text}`);

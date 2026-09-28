@@ -138,6 +138,26 @@ fn signature_fixtures_are_reproducible() {
 }
 
 #[test]
+fn invalid_signatures_are_rejected() {
+    let f = load("signatures.json");
+    for c in f["invalid"].as_array().unwrap() {
+        let msg = unhex(c["message_hex"].as_str().unwrap());
+        let key = c["public_key"].as_str().unwrap().parse::<PublicKey>();
+        let sig = c["signature"]
+            .as_str()
+            .unwrap()
+            .parse::<openaevc_protocol::Signature>();
+        if let (Ok(k), Ok(s)) = (key, sig) {
+            assert!(
+                openaevc_crypto::verify(&k, openaevc_crypto::Domain::Request, &msg, &s).is_err(),
+                "{} verified",
+                c["name"]
+            );
+        }
+    }
+}
+
+#[test]
 fn identifier_fixtures() {
     let f = load("identifiers.json");
     for s in f["valid"].as_array().unwrap() {

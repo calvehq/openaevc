@@ -161,8 +161,13 @@ func (c *Client) Negotiate() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	p := info["protocol"].(map[string]any)
-	if cmpVersion(ProtocolVersion, p["min"].(string)) < 0 || cmpVersion(ProtocolVersion, p["max"].(string)) > 0 {
+	p, _ := info["protocol"].(map[string]any)
+	lo, _ := p["min"].(string)
+	hi, _ := p["max"].(string)
+	if lo == "" || hi == "" {
+		return "", &ProtocolError{Code: "INTERNAL", Message: "daemon info has no protocol range"}
+	}
+	if cmpVersion(ProtocolVersion, lo) < 0 || cmpVersion(ProtocolVersion, hi) > 0 {
 		return "", &ProtocolError{Code: "PROTOCOL_VERSION_UNSUPPORTED", Message: "daemon does not support " + ProtocolVersion}
 	}
 	return ProtocolVersion, nil
@@ -276,7 +281,13 @@ func (c *Client) Events(after int64, kinds []string, fn func(map[string]any) boo
 	return sc.Err()
 }
 
-func result(r map[string]any) map[string]any { return r["result"].(map[string]any) }
+func result(r map[string]any) map[string]any {
+	m, _ := r["result"].(map[string]any)
+	if m == nil {
+		return map[string]any{}
+	}
+	return m
+}
 
 // CreateNamespace (administrators only) returns the namespace and root principal IDs.
 func (c *Client) CreateNamespace(roots []map[string]any) (string, []string, error) {

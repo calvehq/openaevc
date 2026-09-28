@@ -11,6 +11,8 @@ use openaevc_protocol::{ObjectEnvelope, SUPPORTED_PROTOCOL};
 use openaevc_store::{SqliteOptions, SqliteStore, Store};
 use serde_json::Value;
 
+/// Generated copy of `schemas/json/openaevc.schema.json`, written by `generate-schemas` (checked by
+/// `generate-schemas --check`) so the published crate is self-contained. Do not edit.
 const SCHEMA: &str = include_str!("../openaevc.schema.json");
 
 #[derive(Parser, Debug)]

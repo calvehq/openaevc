@@ -46,6 +46,12 @@ func NewID(prefix string) string {
 
 // ParseID validates a typed identifier (case-insensitive) and returns its canonical form.
 func ParseID(text string) (string, error) {
+	// Case folding is ASCII-only (a Unicode fold would turn U+212A KELVIN SIGN into "k").
+	for i := 0; i < len(text); i++ {
+		if text[i] >= 0x80 {
+			return "", fmt.Errorf("invalid identifier %q", text)
+		}
+	}
 	low := strings.ToLower(text)
 	m := idRE.FindStringSubmatch(low)
 	if m == nil || !contains(IDPrefixes, m[1]) {

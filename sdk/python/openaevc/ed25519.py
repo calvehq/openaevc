@@ -1,6 +1,7 @@
 """Pure-Python Ed25519 (RFC 8032 section 5.1), used when `cryptography` is unavailable.
 
-Constant-time behaviour is NOT guaranteed; install `openaevc[fast]` for production signing.
+Constant-time behaviour is NOT guaranteed; for production signing install `openaevc[fast]` and set
+`OPENAEVC_CRYPTO=cryptography` (opt-in, because broken native installs can abort on import).
 """
 import hashlib
 
