@@ -10,9 +10,16 @@ Versions tracked independently (see `COMPATIBILITY.md`): protocol, extension con
 
 ## Verifying artifacts
 
+Pin the exact repository, workflow and tag: a pattern that admits any owner or ref would accept a
+signature minted by a fork's copy of the workflow.
+
 ```sh
 sha256sum -c SHA256SUMS
-cosign verify-blob --certificate openaevcd.pem --signature openaevcd.sig \
-  --certificate-identity-regexp 'https://github.com/.*/OpenAEVC/.github/workflows/release.yml@.*' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com openaevcd
+f=openaevcd-x86_64-unknown-linux-gnu    # each artifact has <f>.sig and <f>.pem beside it
+cosign verify-blob --certificate "$f.pem" --signature "$f.sig" \
+  --certificate-identity "https://github.com/Shiva936/OpenAEVC/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com "$f"
+gh attestation verify "$f" --repo Shiva936/OpenAEVC
 ```
+
+No release has been published yet; every publish step in `release.yml` is a dry run.

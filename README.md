@@ -16,16 +16,9 @@
   <em>Domain-neutral authority, execution, verification and composition for changes produced by humans or machines.</em>
 </p>
 
-**OpenAEVC** is a protocol and a reference runtime for accepting change under explicit authority.
-Anything that proposes change — a person, an agent, a CI job — works inside a **ChangePack**:
-executions apply effects through extensions, evidence and verification results bind to an exact
-sealed generation, policy gates qualify it, and promotion freezes it into an immutable,
-signed, content-addressed record. Accepted state is a set of immutable **Baselines** composed
-from promoted packs.
+**OpenAEVC** is a protocol and a reference runtime for accepting change under explicit authority. Anything that proposes change — a person, an agent, a CI job — works inside a **ChangePack**: executions apply effects through extensions, evidence and verification results bind to an exact sealed generation, policy gates qualify it, and promotion freezes it into an immutable, signed, content-addressed record. Accepted state is a set of immutable **Baselines** composed from promoted packs.
 
-**It is not** a version-control system, a CI server, an agent framework or a workflow product.
-It knows nothing about files or source code: domains (key-value stores, documents, infrastructure,
-…) are added by out-of-process extensions.
+**It is not** a version-control system, a CI server, an agent framework or a workflow product. It knows nothing about files or source code: domains (key-value stores, documents, infrastructure, …) are added by out-of-process extensions.
 
 ## Architecture
 
@@ -51,8 +44,7 @@ let promoted = client.promote(pack, 1).await?;          // immutable, signed
 let (_, baseline) = client.create_baseline(vec![promoted], vec![]).await?;
 ```
 
-`EmbeddedClient` and `RemoteClient` share one trait and one admission path; see
-[`examples/`](examples/README.md).
+`EmbeddedClient` and `RemoteClient` share one trait and one admission path; see [`examples/`](examples/README.md).
 
 ## Daemon
 
@@ -74,14 +66,12 @@ impl Extension for Counter {
 fn main() -> std::process::ExitCode { serve(Counter) }
 ```
 
-Register it with a pinned digest (`RegisterExtension`), then check it with
-`openaevc-conformance --target extension --extension ./counter`.
+Register it with a pinned digest (`RegisterExtension`), then check it with `openaevc-conformance --target extension --extension ./counter`.
 
 ## Specification and conformance
 
-- [`spec/`](spec/README.md) — the normative protocol (120 requirement IDs).
-- [`spec/conformance.md`](spec/conformance.md) — profiles CORE, AUTHORITY, RUNTIME, EXTENSION_HOST, FULL;
-  `openaevc-conformance --profile FULL --target remote --endpoint … --admin-key …`.
+- [`spec/`](spec/README.md) — the normative protocol (every normative MUST has a requirement ID).
+- [`spec/conformance.md`](spec/conformance.md) — profiles CORE, AUTHORITY, RUNTIME, EXTENSION_HOST, FULL; `openaevc-conformance --profile FULL --target remote --endpoint … --admin-key …`.
 - [`docs/`](docs/architecture/README.md) — architecture, SDKs, extension authoring, operations, ADRs.
 
 Apache-2.0. See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) and [COMPATIBILITY.md](COMPATIBILITY.md).
