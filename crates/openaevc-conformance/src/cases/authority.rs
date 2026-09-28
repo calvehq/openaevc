@@ -498,7 +498,86 @@ pub async fn denial_audit(cx: &Ctx) -> CaseResult {
             && last.actor == Some(m.id)
             && last.body["action"] == "changepack.create",
         format!("denial not audited: {last:?}"),
+    )?;
+    // An authenticated caller refused `act_as` is audited too, as are denied reads.
+    let other = cx.member(&ns).await?;
+    let as_other = cx.target.client(
+        cx.target
+            .session(m.key.clone(), m.id, Some(ns.id))
+            .act_as(other.id),
+    );
+    expect_code(
+        as_other.query(Query::GetNamespace {}).await,
+        ErrorCode::Forbidden,
+    )?;
+    let last = cx.events(&ns.root).await?.pop().ok_or("no events")?;
+    ensure(
+        last.kind == "authorization.denied" && last.actor == Some(m.id),
+        format!("act_as denial not audited: {last:?}"),
+    )?;
+    expect_code(
+        m.client.query(Query::GetNamespace {}).await,
+        ErrorCode::Forbidden,
+    )?;
+    let last = cx.events(&ns.root).await?.pop().ok_or("no events")?;
+    ensure(
+        last.kind == "authorization.denied" && last.body["action"] == "namespace.read",
+        format!("query denial not audited: {last:?}"),
     )
+}
+
+/// AEVC-CAP-0006: protocol 0.1 enforces no constraints, so grants carrying one are refused.
+pub async fn constraints(cx: &Ctx) -> CaseResult {
+    let ns = cx.namespace().await?;
+    let m = cx.member(&ns).await?;
+    let mut body = cx.grant_body(ns.id, ns.root_id, m.id, &["changepack.create"], None, 0);
+    body.constraints
+        .insert("org.example.max-effects".into(), json!(1));
+    expect_code(ns.root.issue_grant(body).await, ErrorCode::InvalidArgument)?;
+    expect_code(
+        m.client.create_change_pack(PackSpec::default()).await,
+        ErrorCode::Forbidden,
+    )
+    .map(drop)
+}
+
+/// AEVC-CAP-0007: a resource-scoped grant never confers non-resource actions.
+pub async fn resource_scoped(cx: &Ctx) -> CaseResult {
+    let ns = cx.namespace().await?;
+    let m = cx.member(&ns).await?;
+    let mut body = cx.grant_body(ns.id, ns.root_id, m.id, &["*"], None, 0);
+    body.resources = vec![ResourceSelector {
+        kind: "kv.entry".into(),
+        locator_prefix: Some("app/".into()),
+    }];
+    ns.root.issue_grant(body).await.c()?;
+    for (what, r) in [
+        (
+            "changepack.create",
+            m.client
+                .create_change_pack(PackSpec::default())
+                .await
+                .map(drop),
+        ),
+        (
+            "grant.issue",
+            m.client
+                .issue_grant(cx.grant_body(ns.id, m.id, m.id, &["*"], None, 0))
+                .await
+                .map(drop),
+        ),
+        (
+            "namespace.read",
+            m.client.query(Query::GetNamespace {}).await.map(drop),
+        ),
+    ] {
+        let e = expect_code(r, ErrorCode::Forbidden).map_err(|e| format!("{what}: {e}"))?;
+        ensure(
+            e.missing_action.as_deref() == Some(what),
+            format!("{what}: missing_action {:?}", e.missing_action),
+        )?;
+    }
+    Ok(())
 }
 
 pub async fn grant_validity(cx: &Ctx) -> CaseResult {

@@ -107,6 +107,8 @@ pub struct Remote {
     /// Local path of the same extension directory the remote runtime is configured with.
     pub extensions: Option<PathBuf>,
     pub checkpoint_interval: u64,
+    /// Test-harness control of the implementation's process and data root, when available.
+    pub lifecycle: Option<Arc<dyn crate::lifecycle::Lifecycle>>,
 }
 
 pub enum Target {
@@ -217,7 +219,23 @@ impl Target {
             admin_id,
             extensions,
             checkpoint_interval,
+            lifecycle: None,
         })
+    }
+
+    /// Attaches a lifecycle controller (remote targets only; test infrastructure).
+    pub fn with_lifecycle(mut self, l: Arc<dyn crate::lifecycle::Lifecycle>) -> Self {
+        if let Target::Remote(r) = &mut self {
+            r.lifecycle = Some(l);
+        }
+        self
+    }
+
+    pub fn lifecycle(&self) -> Option<Arc<dyn crate::lifecycle::Lifecycle>> {
+        match self {
+            Target::Remote(r) => r.lifecycle.clone(),
+            Target::InProcess(_) => None,
+        }
     }
 
     pub fn describe(&self) -> String {

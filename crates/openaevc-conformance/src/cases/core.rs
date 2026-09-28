@@ -71,6 +71,18 @@ pub async fn objects_invalid_rejected(cx: &Ctx) -> CaseResult {
         expect_code(import(cx, &ns, digest, bytes).await, want)
             .map_err(|e| format!("{}: {e}", c["name"]))?;
     }
+    // Every non-canonical encoding of the golden set is refused by the target's decoder.
+    for c in fixtures("values")?["invalid_cbor"]
+        .as_array()
+        .ok_or("fixtures")?
+    {
+        let bytes = unhex(c["cbor_hex"].as_str().ok_or("hex")?);
+        expect_code(
+            import(cx, &ns, openaevc_crypto::sha256(&bytes), bytes).await,
+            ErrorCode::CanonicalEncodingError,
+        )
+        .map_err(|e| format!("invalid CBOR {}: {e}", c["name"]))?;
+    }
     Ok(())
 }
 
@@ -244,6 +256,47 @@ pub async fn signatures(cx: &Ctx) -> CaseResult {
         matches!(&r, Err(e) if matches!(e.code, ErrorCode::Unauthorized | ErrorCode::InvalidArgument)),
         format!("malformed signature accepted: {r:?}"),
     )?;
+    // Non-canonical S (S + L) of an otherwise valid signature: strict verification refuses it.
+    let v = cx.signed_value(&ns.root_key, ns.root_id, Some(ns.id), body.clone(), |_| {});
+    let sig: openaevc_protocol::Signature = v["signature"]
+        .as_str()
+        .ok_or("signature")?
+        .parse()
+        .map_err(|_| "signature")?;
+    let l: [u8; 32] = [
+        0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde,
+        0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10,
+    ];
+    let mut high = *sig.as_bytes();
+    let mut carry = 0u16;
+    for i in 0..32 {
+        let x = high[32 + i] as u16 + l[i] as u16 + carry;
+        high[32 + i] = x as u8;
+        carry = x >> 8;
+    }
+    let mut v = v;
+    v["signature"] = json!(openaevc_protocol::b64::encode(&high));
+    expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized)?;
+    // A principal registered with a small-order key must never authenticate with the
+    // universal forgery (R = identity, S = 0).
+    let mut identity = [0u8; 32];
+    identity[0] = 1;
+    let weak = ns
+        .root
+        .register_principal(NewPrincipal {
+            kind: PrincipalKind::Key,
+            public_key: Some(PublicKey::from_bytes(identity)),
+            linked_to: None,
+            attributes: Default::default(),
+        })
+        .await;
+    if let Ok(weak) = weak {
+        let mut forged = [0u8; 64];
+        forged[0] = 1;
+        let mut v = cx.signed_value(&ns.root_key, weak, Some(ns.id), body.clone(), |_| {});
+        v["signature"] = json!(openaevc_protocol::b64::encode(&forged));
+        expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized)?;
+    }
     // Another key.
     let other = openaevc_crypto::SigningKey::generate();
     let v = cx.signed_value(&other, ns.root_id, Some(ns.id), body, |_| {});
