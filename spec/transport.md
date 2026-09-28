@@ -1,28 +1,19 @@
 # Transport
 
-The same command/query/event semantics are available embedded (in-process) and through the
-reference daemon `openaevcd`. There is no privileged embedded path.
+The same command/query/event semantics are available embedded (in-process) and through the reference daemon `openaevcd`. There is no privileged embedded path.
 
 ## Envelopes
 
-Every command and query is an `Envelope{protocol_version, request_id, namespace?, caller,
-act_as?, nonce, issued_at, expires_at?, body, signature}`. The signature is Ed25519 by the
-caller's key over the canonical encoding of the envelope with `signature` omitted, in the
-`request` domain (identity-and-digests.md).
+Every command and query is an `Envelope{protocol_version, request_id, namespace?, caller, act_as?, nonce, issued_at, expires_at?, body, signature}`. The signature is Ed25519 by the caller's key over the canonical encoding of the envelope with `signature` omitted, in the `request` domain (identity-and-digests.md).
 
-**AEVC-TRN-0001** Implementations MUST authenticate and authorize every envelope identically
-regardless of transport; the daemon MUST NOT make authorization decisions of its own.
+**AEVC-TRN-0001** Implementations MUST authenticate and authorize every envelope identically regardless of transport; the daemon MUST NOT make authorization decisions of its own.
 
-**AEVC-TRN-0002** The signature covers the canonical CBOR encoding of the envelope value exactly
-as transmitted (with `signature` removed); implementations MUST verify over that value, not over
-a re-serialization. Envelopes are parsed strictly: unknown fields, `null`, floats and malformed
-values are rejected (`INVALID_ARGUMENT` / `CANONICAL_ENCODING_ERROR`). Optional fields may be sent
-empty or omitted; the envelope digest (idempotency) is of the value as received.
+**AEVC-TRN-0002** The signature covers the canonical CBOR encoding of the envelope value exactly as transmitted (with `signature` removed); implementations MUST verify over that value, not over a re-serialization. Envelopes are parsed strictly: unknown fields, `null`, floats and malformed values are rejected (`INVALID_ARGUMENT` / `CANONICAL_ENCODING_ERROR`). Optional fields may be sent empty or omitted; the envelope digest (idempotency) is of the value as received.
 
 ## HTTP v1
 
 | Method & path | Body / auth | Response |
-|---------------|-------------|----------|
+| --- | --- | --- |
 | `GET /v1/info` | none | `RuntimeInfo` (supported protocol and contract ranges) |
 | `POST /v1/commands` | `CommandEnvelope` (JSON or `application/cbor`) | `CommandReceipt` |
 | `POST /v1/queries` | `QueryEnvelope` | query result |
@@ -33,36 +24,21 @@ empty or omitted; the envelope digest (idempotency) is of the value as received.
 | `GET /v1/health/live`, `/v1/health/ready` | none | 200 / 503 |
 | `GET /v1/metrics` | none | Prometheus text |
 
-The `openaevc-envelope` header is the unpadded base64url of the envelope's canonical CBOR. Clients
-that cannot set headers (browser `EventSource`) may pass the same value as an `envelope` query
-parameter on the `GET` endpoints; URLs are commonly logged, so such envelopes should carry a short
-`expires_at` (authority.md, AEVC-AUTH-0005). Query parameter values are percent-decoded.
-Responses honour `Accept: application/cbor`. Errors are `ProtocolError` bodies with HTTP status
-400 (request/encoding), 401, 403, 404, 409 (lifecycle/conflict), 422 (extension incompatible),
-500, 502 (extension failure) or 503 (integrity/recovery).
+The `openaevc-envelope` header is the unpadded base64url of the envelope's canonical CBOR. Clients that cannot set headers (browser `EventSource`) may pass the same value as an `envelope` query parameter on the `GET` endpoints; URLs are commonly logged, so such envelopes should carry a short `expires_at` (authority.md, AEVC-AUTH-0005). Query parameter values are percent-decoded. Responses honour `Accept: application/cbor`. Errors are `ProtocolError` bodies with HTTP status 400 (request/encoding), 401, 403, 404, 409 (lifecycle/conflict), 422 (extension incompatible), 500, 502 (extension failure) or 503 (integrity/recovery).
 
-A request the daemon abandons at its request timeout may still commit. The daemon then answers
-`INTERNAL` with `retryable: false`; clients learn the outcome by resending the *same* signed
-envelope, which returns the original receipt if the command committed (AEVC-AUTH-0006). A newly
-signed envelope is a new request.
+A request the daemon abandons at its request timeout may still commit. The daemon then answers `INTERNAL` with `retryable: false`; clients learn the outcome by resending the _same_ signed envelope, which returns the original receipt if the command committed (AEVC-AUTH-0006). A newly signed envelope is a new request.
 
-**AEVC-TRN-0003** `PUT /v1/objects/{digest}` MUST verify the body bytes against the signed digest;
-the object bytes travel outside the signature, whose digest commits to them.
+**AEVC-TRN-0003** `PUT /v1/objects/{digest}` MUST verify the body bytes against the signed digest; the object bytes travel outside the signature, whose digest commits to them.
 
 ## Events
 
-Server-sent events carry `id: <sequence>`, `event: <kind>` and `data: <Event JSON>`. A subscription
-is authenticated once from its envelope and `namespace.read` is re-authorized on every delivery,
-so revocation ends it with an `event: error` carrying the protocol error.
+Server-sent events carry `id: <sequence>`, `event: <kind>` and `data: <Event JSON>`. A subscription is authenticated once from its envelope and `namespace.read` is re-authorized on every delivery, so revocation ends it with an `event: error` carrying the protocol error.
 
-**AEVC-TRN-0004** Delivery is at-least-once in sequence order; resuming with `Last-Event-ID: n`
-delivers exactly the matching events after `n`. A subscriber whose bounded buffer stays full
-beyond the slow-consumer timeout is disconnected; memory stays bounded.
+**AEVC-TRN-0004** Delivery is at-least-once in sequence order; resuming with `Last-Event-ID: n` delivers exactly the matching events after `n`. A subscriber whose bounded buffer stays full beyond the slow-consumer timeout is disconnected; memory stays bounded.
 
 ## Listeners
 
-The reference daemon listens on a Unix-domain socket by default, optionally on loopback TCP, and
-on TLS for any remote address.
+The reference daemon listens on a Unix-domain socket by default, optionally on loopback TCP, and on TLS for any remote address.
 
 **AEVC-TRN-0005** Non-loopback TCP MUST use TLS; the daemon refuses such configurations otherwise.
 

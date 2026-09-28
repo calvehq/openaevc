@@ -10,8 +10,7 @@ Versions tracked independently (see `COMPATIBILITY.md`): protocol, extension con
 
 ## Verifying artifacts
 
-Pin the exact repository, workflow and tag: a pattern that admits any owner or ref would accept a
-signature minted by a fork's copy of the workflow.
+Pin the exact repository, workflow and tag: a pattern that admits any owner or ref would accept a signature minted by a fork's copy of the workflow.
 
 ```sh
 sha256sum -c SHA256SUMS

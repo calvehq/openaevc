@@ -32,8 +32,7 @@ Typed identifiers carry identity, not integrity.
 
 ### Digest roles
 
-Protocol 0.1 has exactly two digests over an immutable object. There is no separate "body
-digest": the body is hashed only as part of the envelope.
+Protocol 0.1 has exactly two digests over an immutable object. There is no separate "body digest": the body is hashed only as part of the envelope.
 
 | Name | Preimage | Used for |
 | --- | --- | --- |
@@ -42,21 +41,11 @@ digest": the body is hashed only as part of the envelope.
 
 Consequences:
 
-- Adding, removing or replacing a signature produces a *different object* with a different
-  object digest. Accepted bytes never change, so an accepted object's signature set is final.
-- Every signature covers the same signing digest, independent of the other signatures, so a
-  signature set has no circular dependency and signing order is irrelevant: the list has one
-  canonical order (AEVC-OBJ-0006).
-- Two objects with equal signing digests carry the same signed content; consumers that need
-  signer-independent comparison compare signing digests, but references always name an object
-  digest.
+- Adding, removing or replacing a signature produces a _different object_ with a different object digest. Accepted bytes never change, so an accepted object's signature set is final.
+- Every signature covers the same signing digest, independent of the other signatures, so a signature set has no circular dependency and signing order is irrelevant: the list has one canonical order (AEVC-OBJ-0006).
+- Two objects with equal signing digests carry the same signed content; consumers that need signer-independent comparison compare signing digests, but references always name an object digest.
 
-A grant digest (`parent`, revocations, authorization chains) is the object digest of the
-`capability_grant` object holding the signed grant (capabilities.md). The remaining digests in
-the protocol are digests *of* a value, not object identities: request-envelope digests
-(idempotency, transport.md), Baseline graph digests (composition.md), event hashes (events.md),
-key fingerprints, and extension artifact
-digests (SHA-256 of the executable file).
+A grant digest (`parent`, revocations, authorization chains) is the object digest of the `capability_grant` object holding the signed grant (capabilities.md). The remaining digests in the protocol are digests _of_ a value, not object identities: request-envelope digests (idempotency, transport.md), Baseline graph digests (composition.md), event hashes (events.md), key fingerprints, and extension artifact digests (SHA-256 of the executable file).
 
 ## Keys and signatures
 
@@ -70,8 +59,6 @@ Public keys are Ed25519, written `ed25519:<unpadded base64url of 32 bytes>`; sig
 
 Timestamps are RFC 3339 UTC with a `Z` suffix and 0–9 fraction digits; the canonical output form has exactly nine fraction digits. Offsets other than `Z` and dates before 1970 are invalid.
 
-**AEVC-ID-0008** Timestamps inside immutable objects MUST use the canonical nine-fraction-digit
-form; objects with other spellings do not re-encode identically and are rejected. (Request
-envelopes are verified over the value as transmitted, transport.md.)
+**AEVC-ID-0008** Timestamps inside immutable objects MUST use the canonical nine-fraction-digit form; objects with other spellings do not re-encode identically and are rejected. (Request envelopes are verified over the value as transmitted, transport.md.)
 
 **AEVC-ID-0007** Timestamps MUST NOT be the sole ordering authority. Per-Namespace event sequence numbers (events.md) are authoritative.

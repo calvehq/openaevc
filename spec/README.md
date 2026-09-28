@@ -8,7 +8,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** are
 
 Every normative requirement carries a stable identifier of the form `AEVC-<AREA>-<NNNN>`, written in bold at the start of the requirement, for example:
 
-> **AEVC-EXAMPLE-0001** Canonical objects MUST be encoded as deterministic CBOR. *(format illustration only)*
+> **AEVC-EXAMPLE-0001** Canonical objects MUST be encoded as deterministic CBOR. _(format illustration only)_
 
 Identifiers are never reused or renumbered. A withdrawn requirement keeps its ID with the text "Withdrawn in <version>". Every requirement ID containing MUST or MUST NOT is covered by at least one conformance case (`spec/conformance.md`); `tooling/release-check/coverage.py` enforces this.
 

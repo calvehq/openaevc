@@ -50,7 +50,7 @@ EXTENSION_FORBIDDEN = {
     "openaevc-store", "openaevc-runtime", "openaevc-transport", "openaevc-sdk",
     "openaevc-execution", "openaevc-verification", "openaevc-composition", "rusqlite",
 }
-PRODUCTION_ROOTS = ("crates/", "bins/", "extensions/")
+PRODUCTION_ROOTS = ("crates/", "bins/", "extensions/", "sdk/rust/")
 
 VOCAB = re.compile(r"\bdraft\b|pull[ -]request|\bbranch(es)?\b|project sidebar|review screen", re.I)
 MARKERS = re.compile(
