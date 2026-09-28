@@ -200,9 +200,39 @@ fn find_ext(
     ext::find(tx, what, kind, |r| pick(r).clone())
 }
 
-fn evidence_inputs(tx: &Tx<'_>, s: &Subject, digests: &[Digest]) -> Result<Vec<EvidenceInput>> {
+/// Inputs must have been recorded for this pack (RegisterEvidence, a verifier's attachments,
+/// RunVerification, RunEvaluation): an imported object bound to the candidate is inert data
+/// (AEVC-XCH-0003) and never stands in for registered evidence.
+fn require_recorded(tx: &Tx<'_>, pack: PackId, d: &Digest) -> Result<()> {
+    let res: PackResults = tx
+        .peek(records::PACK_RESULTS, &results_key(tx, pack))?
+        .unwrap_or_default();
+    let recorded = res
+        .evidence
+        .iter()
+        .chain(&res.verifications)
+        .chain(&res.evaluations)
+        .any(|r| r.digest == *d);
+    if recorded {
+        Ok(())
+    } else {
+        Err(ProtocolError::new(
+            ErrorCode::EvidenceInvalid,
+            format!("input {d} was not recorded for pack {pack}"),
+        )
+        .with_object(d))
+    }
+}
+
+fn evidence_inputs(
+    tx: &Tx<'_>,
+    pack: PackId,
+    s: &Subject,
+    digests: &[Digest],
+) -> Result<Vec<EvidenceInput>> {
     let mut out = Vec::new();
     for d in digests {
+        require_recorded(tx, pack, d)?;
         let (_, e): (_, Evidence) = tx.require_object(d, ObjectKind::Evidence)?;
         verification::check_binding(e.generation, e.candidate, s)?;
         let (_, blob): (_, Blob) = tx.require_object(&e.payload, ObjectKind::Blob)?;
@@ -228,7 +258,7 @@ pub(crate) fn run_verification(
     authz(tx, ctx, "verification.run", None)?;
     let (mut p, s) = load_sealed(tx, pack, generation)?;
     let rec = find_ext(tx, "verifier", &verifier, |r| &r.manifest.verifier_kinds)?;
-    let inputs = evidence_inputs(tx, &s, &evidence)?;
+    let inputs = evidence_inputs(tx, pack, &s, &evidence)?;
     let cand = candidate(tx, &s)?;
     let op = Operation::Verify {
         kind: verifier.clone(),
@@ -324,7 +354,7 @@ pub(crate) fn run_verification(
     })
 }
 
-fn check_input(tx: &Tx<'_>, s: &Subject, d: &Digest) -> Result<()> {
+fn check_input(tx: &Tx<'_>, pack: PackId, s: &Subject, d: &Digest) -> Result<()> {
     let o = tx
         .load_object(d)?
         .ok_or_else(|| err::not_found(format!("input {d} not found")).with_object(d))?;
@@ -348,7 +378,8 @@ fn check_input(tx: &Tx<'_>, s: &Subject, d: &Digest) -> Result<()> {
             ))
         }
     };
-    verification::check_binding(generation, candidate, s)
+    verification::check_binding(generation, candidate, s)?;
+    require_recorded(tx, pack, d)
 }
 
 pub(crate) fn run_evaluation(
@@ -364,7 +395,7 @@ pub(crate) fn run_evaluation(
     let (mut p, s) = load_sealed(tx, pack, generation)?;
     let rec = find_ext(tx, "evaluator", &evaluator, |r| &r.manifest.evaluator_kinds)?;
     for d in &inputs {
-        check_input(tx, &s, d)?;
+        check_input(tx, pack, &s, d)?;
     }
     let mut res = results(tx, pack)?;
     let cand = candidate(tx, &s)?;

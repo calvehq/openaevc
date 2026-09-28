@@ -15,10 +15,26 @@ use crate::records;
 use crate::tx::Tx;
 use crate::{authz, ext, Ctx, Result};
 
-/// Loads member PromotedPacks (visible in the Namespace).
+/// Digests in the closure of `root` that are not present (and valid) in the Namespace.
+pub(crate) fn missing_closure(tx: &Tx<'_>, root: Digest) -> Result<Vec<Digest>> {
+    let missing = std::cell::RefCell::new(Vec::new());
+    openaevc_composition::closure(&[root], |d| match tx.load_object(d)? {
+        Some(o) => o.references(),
+        None => {
+            missing.borrow_mut().push(*d);
+            Ok(vec![])
+        }
+    })?;
+    Ok(missing.into_inner())
+}
+
+/// Loads member PromotedPacks (visible in the Namespace). With `local`, each member must have
+/// been promoted in this Namespace: an imported `promoted_pack` is inert data that can be
+/// validated but never becomes accepted state here (AEVC-XCH-0003, AEVC-BSL-0002).
 pub(crate) fn load_members(
     tx: &Tx<'_>,
     members: &[Digest],
+    local: bool,
 ) -> Result<Vec<(MemberInfo, PromotedPack)>> {
     let mut out = Vec::new();
     for d in members {
@@ -33,6 +49,21 @@ pub(crate) fn load_members(
             .with_object(d));
         }
         let p: PromotedPack = o.body()?;
+        if local {
+            let promoted_here = tx
+                .peek::<openaevc_protocol::ChangePack>(
+                    records::PACK,
+                    &records::key(&tx.ns, p.pack),
+                )?
+                .and_then(|c| c.promotion)
+                .is_some_and(|i| i.promoted_pack == *d);
+            if !promoted_here {
+                return Err(
+                    err::invalid(format!("member {d} was not promoted in this namespace"))
+                        .with_object(d),
+                );
+            }
+        }
         out.push((
             MemberInfo {
                 digest: *d,
@@ -143,7 +174,7 @@ pub(crate) fn create(
 ) -> Result<CommandResult> {
     authz(tx, ctx, "baseline.create", None)?;
     names::validate_keys(&metadata)?;
-    let infos = load_members(tx, &members)?;
+    let infos = load_members(tx, &members, true)?;
     let comp = compose(
         &infos.iter().map(|(m, _)| m.clone()).collect::<Vec<_>>(),
         &edges,
@@ -158,7 +189,7 @@ pub(crate) fn create(
     let facts = composition_facts(&comp, &v);
     let mut docs = Vec::new();
     for d in &policies {
-        let (_, doc): (_, PolicyDocument) = tx.require_object(d, ObjectKind::PolicyDocument)?;
+        let doc = super::namespace::registered_policy(tx, d)?;
         docs.push((*d, doc));
     }
     let refs: Vec<(Digest, &PolicyDocument)> = docs.iter().map(|(d, doc)| (*d, doc)).collect();
@@ -208,7 +239,15 @@ pub(crate) fn validate(tx: &Tx<'_>, digest: Digest) -> Result<serde_json::Value>
     let mut problems = Vec::new();
     let mut validators = BTreeMap::new();
     let mut graph = None;
-    match load_members(tx, &b.members) {
+    let missing = missing_closure(tx, digest)?;
+    if !missing.is_empty() {
+        problems.push(format!(
+            "closure is incomplete: {} object(s) missing, first {}",
+            missing.len(),
+            missing[0]
+        ));
+    }
+    match load_members(tx, &b.members, false) {
         Err(e) => problems.push(e.message),
         Ok(infos) => {
             let caller_edges: Vec<CompositionEdge> = b

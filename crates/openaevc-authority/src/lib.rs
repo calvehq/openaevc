@@ -139,7 +139,8 @@ fn resources_cover(parent: &[ResourceSelector], child: &[ResourceSelector]) -> b
 fn grant_allows(g: &GrantBody, action: &str, resource: Option<&ResourceRef>) -> bool {
     g.actions.iter().any(|a| action_matches(a, action))
         && match resource {
-            None => true,
+            // A resource-scoped grant never confers actions that are not about a resource.
+            None => g.resources.is_empty(),
             Some(r) => g.resources.is_empty() || g.resources.iter().any(|s| selector_matches(s, r)),
         }
 }
@@ -196,6 +197,14 @@ pub fn validate_grant(
             )));
         }
         verify_signature(view, &current)?;
+        if !g.constraints.is_empty() {
+            // Protocol 0.1 enforces no constraints; honouring one would fail open.
+            return Err(err::invalid(format!(
+                "grant {} carries constraints, which protocol 0.1 does not enforce",
+                g.id
+            ))
+            .with_object(g.id));
+        }
         if view.is_revoked(&g.id) {
             return Err(ProtocolError::new(
                 ErrorCode::CapabilityRevoked,

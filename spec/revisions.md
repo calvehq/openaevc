@@ -6,8 +6,8 @@ one or more promoted packs. It has the ChangePack lifecycle and generations.
 `CreateRevisionPack{relation, targets, spec}` where `relation` is `AMENDS`, `SUPERSEDES` or
 `REVERTS` and `targets` are PromotedPack digests.
 
-**AEVC-REV-0001** A RevisionPack MUST name at least one target and every target MUST be a promoted
-pack visible in the Namespace (`NOT_FOUND` otherwise). The runtime records `REVISION_OF` edges.
+**AEVC-REV-0001** A RevisionPack MUST name at least one target (`INVALID_ARGUMENT` otherwise) and
+every target MUST be a promoted pack visible in the Namespace (`NOT_FOUND` otherwise). The runtime records `REVISION_OF` edges.
 
 **AEVC-REV-0002** The relation describes history; it does not generate inverse effects. The domain
 extension produces and validates the actual effects (for example `kv.delete` to revert a

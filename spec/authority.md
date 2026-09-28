@@ -45,7 +45,9 @@ Core actions: `namespace.read`, `changepack.create`, `changepack.mutate`, `chang
 
 ## Replay protection
 
-**AEVC-AUTH-0005** A runtime MUST reject (`REPLAY_DETECTED`) a request whose `issued_at` differs from its clock by more than the replay window (default 300 s), whose `expires_at` has passed, or whose nonce was already used by the same caller within the window.
+**AEVC-AUTH-0005** A runtime MUST reject (`REPLAY_DETECTED`) a request whose `issued_at` differs from its clock by more than the replay window (default 300 s) or whose `expires_at` has passed, and a command whose nonce was already used by the same caller within the window.
+
+Nonces are consumed by committed commands only. Queries (including event subscriptions and object reads) are side-effect free and are not nonce-tracked: a captured query envelope can be replayed until its freshness window closes, returning what its signer may read. Clients that expose envelopes (for example in URLs) should set a short `expires_at`. A command that failed did not consume its nonce and can be resubmitted within the window; a client abandoning a command should let it expire rather than rely on its failure.
 
 **AEVC-AUTH-0006** A command retried with the same `request_id` and an identical envelope MUST return the original receipt without re-executing. Reusing a `request_id` with a different envelope MUST fail with `REPLAY_DETECTED`.
 
