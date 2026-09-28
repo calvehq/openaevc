@@ -61,10 +61,16 @@ openaevc-conformance --target extension --extension ./target/release/my-extensio
 The check runs the handshake, confirms the manifest pins the executable's digest and a v1
 contract range, that identifiers are namespaced, and that undeclared kinds get an error.
 
-## Rules of the sandbox
+## What the host enforces, and what it does not
 
 The process starts with only `PATH` in its environment and the extension directory as working
-directory; it has no access to runtime storage or keys. Output frames are limited in size, the
-whole exchange has a deadline, and a host-call budget applies. Anything the extension wants to
-change goes through its outputs, which the runtime validates and records. The reference host does
-not add OS-level isolation; deployments that need it run extensions under their own sandbox.
+directory, and is never given runtime storage paths, database handles or keys. Output frames are
+limited in size, the whole exchange has a deadline, and a host-call budget applies. Anything the
+extension wants to change goes through its outputs, which the runtime validates and records.
+
+Host capabilities control the host calls you may make, not what your process can do: the
+reference host is **not** an OS sandbox. Your executable runs with the privileges of the OS user
+that runs the runtime (or whatever identity the operator arranges), so operators treat
+registering it as trusting that code. `resource.write`, `network.connect` and `secret.read` can
+be declared, but the reference host implements no host call for them: they are reported as
+`unsupported_host_capabilities` and never granted (spec/extensions.md, AEVC-EXT-0009).

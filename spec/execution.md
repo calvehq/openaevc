@@ -6,11 +6,13 @@ Roles: the **runtime** owns lifecycle, authority, provenance and candidate state
 
 `RegisterProvider` (action `provider.register`) records a provider descriptor: ID, version, worker kinds, harnesses, required actions, cancellation/resumability/heartbeat support, resource limits, provenance fields, and the principal that speaks for the provider.
 
+**AEVC-EXE-0009** Re-registering an existing provider ID MUST be refused (`FORBIDDEN`) unless the caller is that provider's current principal or a Namespace root: the provider principal may drive every execution of the provider (AEVC-EXE-0004).
+
 ## Admission
 
 `StartExecution{request}` (action `execution.start`). The request names pack and expected generation, work unit, provider, harness, optional worker, allowed resource selectors, allowed effect kinds, context object digests, timeout, budget, `max_attempts`, an idempotency key and optionally `retry_of`.
 
-**AEVC-EXE-0001** Before an execution starts the runtime MUST validate, in order: the pack is `OPEN` (otherwise `INVALID_TRANSITION`, `QUARANTINED` or `IMMUTABLE_OBJECT`); the generation matches (`STALE_GENERATION`); the work unit exists and is `OPEN`; every dependency is satisfied (`EXECUTION_NOT_READY`, listing the waiting nodes); the provider is registered and supports the harness and worker kind; every allowed effect kind is provided by an active extension bound to the pack (`EXTENSION_INCOMPATIBLE` / `INVALID_ARGUMENT`); the work unit has no active execution (`CONFLICT`); retry constraints hold.
+**AEVC-EXE-0001** Before an execution starts the runtime MUST validate, in order: the pack is `OPEN` (otherwise `INVALID_TRANSITION`, `QUARANTINED` or `IMMUTABLE_OBJECT`); the generation matches (`STALE_GENERATION`); the work unit exists and is `OPEN`; every dependency is satisfied (`EXECUTION_NOT_READY`, listing the waiting nodes); the provider is registered (`NOT_FOUND`) and supports the harness and worker kind (`INVALID_ARGUMENT`); every allowed effect kind is a namespaced name (`INVALID_ARGUMENT`) provided by an active extension bound to the pack (`EXTENSION_INCOMPATIBLE`); the work unit has no active execution (`CONFLICT`); retry constraints hold.
 
 **AEVC-EXE-0002** The actor MUST hold every allowed effect kind's `required_actions` over every allowed resource selector (a grant's selectors must cover the requested selector); otherwise `FORBIDDEN`. The grant chains used are recorded on the execution.
 
@@ -33,5 +35,11 @@ Roles: the **runtime** owns lifecycle, authority, provenance and candidate state
 **AEVC-EXE-0007** The effect kind MUST be in the execution's allowed effects and its target within the allowed resources (`FORBIDDEN`); the target must be of the kind the effect declares (`INVALID_ARGUMENT`); and the execution actor MUST hold every `required_action` on the target resource (`FORBIDDEN`).
 
 **AEVC-EXE-0008** The pack MUST still be `OPEN` at the execution's generation (`STALE_GENERATION` otherwise). The owning extension validates the proposal against the effects already applied to the same resource in this candidate; a rejected proposal is recorded (`effect.rejected`, result state `REJECTED`) and not applied. An accepted proposal is applied by the extension and appended to the candidate with its outcome and complete provenance (`effect.applied`, result state `APPLIED`).
+
+An effect's `preconditions` are opaque to the runtime: it passes them, with the candidate's
+earlier effects on the same resource (`prior`), to the owning extension, which alone defines
+what they mean and what state they are evaluated against. The protocol defines no generic
+precondition or resource-state semantics; in particular, `prior` is candidate-local and says
+nothing about accepted Baselines.
 
 Sealing freezes the candidate (changepack.md). Structural mutation during an execution creates a new generation, after which that execution can no longer contribute effects.

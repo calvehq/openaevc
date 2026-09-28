@@ -294,6 +294,68 @@ fn deadline_is_enforced() {
     );
 }
 
+struct Missing;
+
+impl HostCallHandler for Missing {
+    fn handle(&mut self, _: &HostCall) -> Result<serde_json::Value, CallError> {
+        Err(CallError::Failed(
+            openaevc_extension_contract::wire::WireError::new(
+                "not_found",
+                "configuration key not present",
+            ),
+        ))
+    }
+}
+
+/// A hostile extension can neither block the host on a full pipe nor keep an invocation alive
+/// through a descendant holding its output open: the runtime lock is never held past the
+/// deadline (AEVC-EXT-0006).
+#[test]
+fn hostile_extensions_cannot_hang_the_host() {
+    let ext = Extensions::install();
+    let limits = HostLimits {
+        deadline: Duration::from_millis(1500),
+        ..Default::default()
+    };
+    #[cfg(unix)]
+    {
+        let (ep, manifest) = fixture(&ext, "detached-child");
+        let start = Instant::now();
+        let r = host::invoke(
+            &ep,
+            &limits,
+            &manifest,
+            verify_op("detached-child"),
+            vec![],
+            &mut NoScope,
+        );
+        assert!(r.is_ok(), "{r:?}");
+        assert!(
+            start.elapsed() < Duration::from_secs(10),
+            "a descendant holding stderr must not block the host"
+        );
+    }
+    let (ep, manifest) = fixture(&ext, "no-read");
+    let start = Instant::now();
+    let e = host::invoke(
+        &ep,
+        &limits,
+        &manifest,
+        verify_op("no-read"),
+        vec![],
+        &mut Missing,
+    )
+    .unwrap_err();
+    assert!(
+        matches!(e, HostError::Deadline | HostError::Protocol(_)),
+        "{e:?}"
+    );
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "unread replies must not block the host"
+    );
+}
+
 #[test]
 fn extension_processes_get_no_runtime_environment() {
     let ext = Extensions::install();

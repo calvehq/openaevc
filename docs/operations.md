@@ -29,6 +29,20 @@ redacted. Sections:
 
 Non-loopback listeners must use TLS.
 
+## Extensions and OS privileges
+
+Registered extensions run as child processes with the daemon's OS identity. OpenAEVC's host
+capabilities restrict what an extension may ask the runtime for, not what the process may do on
+the machine: the reference host does not sandbox it (spec/security-model.md). For a deployment
+that must contain extension code:
+
+- run `openaevcd` as a dedicated user, and keep extension directories writable only by
+  administrators (digest pinning is checked before each spawn, not atomically with it);
+- register only extensions you would run as that user, or wrap each extension entrypoint in a
+  launcher that drops to a separate unprivileged user or sandbox (container, seccomp/AppArmor,
+  sandbox-exec) with no access to the data root or `runtime-key/`;
+- keep the admin key off the host.
+
 ## Health and metrics
 
 - `GET /v1/health/live` — process is up.

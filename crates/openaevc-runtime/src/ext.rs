@@ -95,7 +95,8 @@ struct Calls<'a> {
     prior: &'a [AppliedEffect],
     config: Option<&'a Value>,
     now: String,
-    entropy: &'a dyn openaevc_core::IdGenerator,
+    /// The invocation's deadline: a `process.execute` child never outlives it.
+    deadline: std::time::Instant,
     collected: Collected,
 }
 
@@ -135,7 +136,10 @@ impl HostCallHandler for Calls<'_> {
             } => host::run_process(
                 program,
                 args,
-                Duration::from_millis((*timeout_ms).min(30_000)),
+                Duration::from_millis((*timeout_ms).min(30_000)).min(
+                    self.deadline
+                        .saturating_duration_since(std::time::Instant::now()),
+                ),
                 MAX_PROCESS_OUTPUT,
             )
             .map_err(CallError::Failed),
@@ -171,12 +175,9 @@ impl HostCallHandler for Calls<'_> {
                 if *len > 1024 {
                     return fail("limit", "at most 1024 random bytes per call");
                 }
-                let mut out = Vec::with_capacity(*len as usize);
-                while out.len() < *len as usize {
-                    out.extend_from_slice(&self.entropy.next_bytes());
-                }
-                out.truncate(*len as usize);
-                Ok(Value::String(b64::encode(&out)))
+                Ok(Value::String(b64::encode(&openaevc_crypto::random_bytes(
+                    *len as usize,
+                ))))
             }
             HostCall::Log {
                 level,
@@ -224,14 +225,18 @@ pub(crate) fn invoke(
         .allowed_capabilities()
         .iter()
         .copied()
-        .filter(|c| rec.manifest.host_capabilities.contains(c) && rec.approved.contains(c))
+        .filter(|c| {
+            rec.manifest.host_capabilities.contains(c)
+                && rec.approved.contains(c)
+                && host::SUPPORTED_HOST_CAPABILITIES.contains(c)
+        })
         .collect();
     let mut calls = Calls {
         scope,
         prior,
         config,
         now: tx.now.to_string(),
-        entropy: tx.rt.ids.as_ref(),
+        deadline: std::time::Instant::now() + limits(tx).deadline,
         collected: Collected::default(),
     };
     let ep = Entrypoint {

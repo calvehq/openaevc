@@ -71,6 +71,21 @@ fn claimed_kinds(m: &openaevc_protocol::ExtensionManifest) -> Vec<String> {
         .collect()
 }
 
+/// Requested host capabilities this host cannot provide: reported, never granted.
+pub(crate) fn unsupported_capabilities(
+    m: &openaevc_protocol::ExtensionManifest,
+) -> Vec<HostCapability> {
+    let mut v: Vec<HostCapability> = m
+        .host_capabilities
+        .iter()
+        .copied()
+        .filter(|c| !host::SUPPORTED_HOST_CAPABILITIES.contains(c))
+        .collect();
+    v.sort();
+    v.dedup();
+    v
+}
+
 pub(crate) fn register(
     tx: &mut Tx<'_>,
     ctx: &Ctx,
@@ -116,10 +131,13 @@ pub(crate) fn register(
     }
     let mut approved: Vec<HostCapability> = approved
         .into_iter()
-        .filter(|c| manifest.host_capabilities.contains(c))
+        .filter(|c| {
+            manifest.host_capabilities.contains(c) && host::SUPPORTED_HOST_CAPABILITIES.contains(c)
+        })
         .collect();
     approved.sort();
     approved.dedup();
+    let unsupported = unsupported_capabilities(&manifest);
     let obj = tx.object(
         ObjectKind::ExtensionManifest,
         Some(manifest.id.clone()),
@@ -138,7 +156,7 @@ pub(crate) fn register(
     tx.put(records::EXTENSION, &records::key(&tx.ns, &id), &rec)?;
     tx.emit(
         "extension.registered",
-        json!({"extension": id, "version": rec.manifest.version, "manifest": obj.digest(), "artifact": actual, "granted_host_capabilities": approved}),
+        json!({"extension": id, "version": rec.manifest.version, "manifest": obj.digest(), "artifact": actual, "granted_host_capabilities": approved, "unsupported_host_capabilities": unsupported}),
         vec![id.clone(), obj.digest().to_string()],
     );
     Ok(CommandResult {
@@ -207,6 +225,17 @@ pub(crate) fn register_provider(
         )));
     }
     let id = p.id.clone();
+    // The provider principal drives executions: only it or a root may replace a registration.
+    if let Some(old) =
+        tx.peek::<ProviderDescriptor>(records::PROVIDER, &records::key(&tx.ns, &id))?
+    {
+        if old.principal != ctx.principal && !ctx.roots.contains(&ctx.principal) {
+            return Err(err::forbidden(format!(
+                "provider {id} is registered to another principal"
+            ))
+            .with_missing_action("provider.register"));
+        }
+    }
     tx.put(records::PROVIDER, &records::key(&tx.ns, &id), &p)?;
     tx.emit(
         "provider.registered",

@@ -11,6 +11,7 @@ for name in openaevc-ext-reference-kv openaevc-ext-reference-null; do
   cp "$src/$name$exe" "$dst/$name$exe"
 done
 for mode in well-behaved undeclared-resource undeclared-process oversized invalid-frame \
-            wrong-digest slow incompatible crash probe; do
+            wrong-digest slow incompatible crash probe detached-child no-read wants-unsupported \
+            kind-thief upgrade; do
   cp "$src/openaevc-ext-conformance-fixtures$exe" "$dst/conformance-fixture-$mode$exe"
 done

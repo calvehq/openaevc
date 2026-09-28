@@ -6,10 +6,11 @@
 //! per-invocation capability grants; any violation kills the process and fails closed.
 //! Extensions never receive storage paths, database handles or runtime credentials.
 
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -42,6 +43,17 @@ impl Default for HostLimits {
         }
     }
 }
+
+/// Host capabilities this host implements a host call for. `resource.write`,
+/// `network.connect` and `secret.read` are valid manifest declarations, but the reference host
+/// offers no host call for them, so it never grants them (AEVC-EXT-0009). The capabilities
+/// govern only these OpenAEVC-mediated calls, not what the OS lets the process do.
+pub const SUPPORTED_HOST_CAPABILITIES: &[HostCapability] = &[
+    HostCapability::ResourceRead,
+    HostCapability::ProcessExecute,
+    HostCapability::ClockRead,
+    HostCapability::EntropyRead,
+];
 
 /// Resolved executable and arguments.
 #[derive(Debug, Clone)]
@@ -126,13 +138,56 @@ enum Incoming {
     Eof,
 }
 
+/// How long output readers may keep draining after the process is gone. A descendant that
+/// inherited the pipe can hold it open indefinitely; the host never waits on it beyond this.
+const DRAIN_GRACE: Duration = Duration::from_millis(200);
+
+/// Reads a child stream on its own thread into a bounded buffer. `finish` returns what was
+/// read, waiting at most `grace` for end-of-stream, so a stream held open by a surviving
+/// descendant can never block the host.
+struct Collector {
+    buf: Arc<Mutex<Vec<u8>>>,
+    done: Receiver<()>,
+}
+
+impl Collector {
+    fn spawn(r: Option<impl Read + Send + 'static>, max: usize) -> Self {
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let (tx, done) = mpsc::channel();
+        let shared = buf.clone();
+        thread::spawn(move || {
+            if let Some(mut r) = r {
+                let mut chunk = [0u8; 4096];
+                while let Ok(n) = r.read(&mut chunk) {
+                    if n == 0 {
+                        break;
+                    }
+                    if let Ok(mut b) = shared.lock() {
+                        let room = max.saturating_sub(b.len());
+                        b.extend_from_slice(&chunk[..n.min(room)]);
+                    }
+                }
+            }
+            let _ = tx.send(());
+        });
+        Collector { buf, done }
+    }
+
+    fn finish(self, grace: Duration) -> Vec<u8> {
+        let _ = self.done.recv_timeout(grace);
+        self.buf.lock().map(|b| b.clone()).unwrap_or_default()
+    }
+}
+
 struct Session {
     child: Child,
-    stdin: ChildStdin,
+    /// Frames for the extension's stdin, written by a dedicated thread: an extension that stops
+    /// reading can fill the pipe, but only that thread blocks, never the host (AEVC-EXT-0006).
+    stdin: Sender<Vec<u8>>,
     rx: Receiver<Incoming>,
     started: Instant,
     limits: HostLimits,
-    stderr: Option<thread::JoinHandle<Vec<u8>>>,
+    stderr: Option<Collector>,
 }
 
 impl Session {
@@ -152,10 +207,18 @@ impl Session {
         let mut child = cmd
             .spawn()
             .map_err(|e| HostError::Spawn(e.kind().to_string()))?;
-        let stdin = child
+        let mut pipe = child
             .stdin
             .take()
             .ok_or_else(|| HostError::Spawn("no stdin".into()))?;
+        let (stdin, frames) = mpsc::channel::<Vec<u8>>();
+        thread::spawn(move || {
+            for frame in frames {
+                if pipe.write_all(&frame).and_then(|()| pipe.flush()).is_err() {
+                    return;
+                }
+            }
+        });
         let stdout = child
             .stdout
             .take()
@@ -180,22 +243,7 @@ impl Session {
                 }
             }
         });
-        let max_err = limits.max_stderr;
-        let stderr = stderr.map(|mut s| {
-            thread::spawn(move || {
-                let mut buf = Vec::new();
-                let mut chunk = [0u8; 4096];
-                while let Ok(n) = s.read(&mut chunk) {
-                    if n == 0 {
-                        break;
-                    }
-                    if buf.len() < max_err {
-                        buf.extend_from_slice(&chunk[..n.min(max_err - buf.len())]);
-                    }
-                }
-                buf
-            })
-        });
+        let stderr = Some(Collector::spawn(stderr, limits.max_stderr));
         Ok(Session {
             child,
             stdin,
@@ -207,8 +255,12 @@ impl Session {
     }
 
     fn send(&mut self, msg: &HostMessage) -> Result<(), HostError> {
-        write_frame(&mut self.stdin, msg)
-            .map_err(|e| HostError::Protocol(format!("write failed: {}", e.kind())))
+        let mut frame = Vec::new();
+        write_frame(&mut frame, msg)
+            .map_err(|e| HostError::Protocol(format!("encode failed: {}", e.kind())))?;
+        self.stdin
+            .send(frame)
+            .map_err(|_| HostError::Protocol("extension closed its input".into()))
     }
 
     fn recv(&mut self) -> Result<ExtensionMessage, HostError> {
@@ -284,7 +336,7 @@ impl Session {
         let _ = self.child.wait();
         self.stderr
             .take()
-            .and_then(|h| h.join().ok())
+            .map(|c| c.finish(DRAIN_GRACE))
             .unwrap_or_default()
     }
 }
@@ -388,7 +440,8 @@ fn run(
 }
 
 /// Runs a program for a `process.execute` host call: no shell, cleared environment, bounded
-/// output, killed at the timeout.
+/// output, killed at the timeout. Output held open by a surviving descendant is truncated, not
+/// waited for.
 pub fn run_process(
     program: &str,
     args: &[String],
@@ -403,27 +456,8 @@ pub fn run_process(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| WireError::new("spawn_failed", e.kind().to_string()))?;
-    let collect = |r: Option<Box<dyn Read + Send>>| {
-        thread::spawn(move || {
-            let mut buf = Vec::new();
-            if let Some(mut r) = r {
-                let _ = r.by_ref().take(max_output as u64).read_to_end(&mut buf);
-            }
-            buf
-        })
-    };
-    let out = collect(
-        child
-            .stdout
-            .take()
-            .map(|s| Box::new(s) as Box<dyn Read + Send>),
-    );
-    let errs = collect(
-        child
-            .stderr
-            .take()
-            .map(|s| Box::new(s) as Box<dyn Read + Send>),
-    );
+    let out = Collector::spawn(child.stdout.take(), max_output);
+    let errs = Collector::spawn(child.stderr.take(), max_output);
     let start = Instant::now();
     let status = loop {
         if let Some(st) = child
@@ -439,8 +473,8 @@ pub fn run_process(
         }
         thread::sleep(Duration::from_millis(5));
     };
-    let stdout = out.join().unwrap_or_default();
-    let stderr = errs.join().unwrap_or_default();
+    let stdout = out.finish(DRAIN_GRACE);
+    let stderr = errs.finish(DRAIN_GRACE);
     let Some(status) = status else {
         return Err(WireError::new("timeout", "process exceeded its timeout"));
     };
