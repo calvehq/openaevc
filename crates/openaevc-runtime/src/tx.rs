@@ -6,14 +6,15 @@ use std::collections::BTreeMap;
 
 use openaevc_core::{IdGeneratorExt, ImmutableObject};
 use openaevc_protocol::{
-    err, Digest, Event, NamespaceId, ObjectEnvelope, ObjectKind, PrincipalId, ProtocolError,
-    RequestId, Sequence, Timestamp, PROTOCOL_VERSION,
+    err, Digest, Event, JournalCheckpoint, NamespaceId, ObjectEnvelope, ObjectKind, PrincipalId,
+    ProtocolError, RequestId, Sequence, Timestamp, PROTOCOL_VERSION,
 };
 use openaevc_store::{AggregatePut, IndexEntry, WriteBatch};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::records;
 use crate::Shared;
 
 pub(crate) struct PendingEvent {
@@ -295,7 +296,35 @@ impl<'a> Tx<'a> {
             prev = e.hash;
             events.push(e);
         }
+        self.checkpoint(&events)?;
         Ok(events)
+    }
+
+    /// AEVC-EVT-0004: when this commit's events include a multiple of `checkpoint_interval`,
+    /// stage a runtime-signed `journal_checkpoint` for the highest one. Every commit path
+    /// (commands, denials, lease sweeps) goes through `finish_events`.
+    fn checkpoint(&mut self, events: &[Event]) -> Result<(), ProtocolError> {
+        let interval = self.rt.config.checkpoint_interval.max(1);
+        let Some(e) = events.iter().rev().find(|e| e.sequence % interval == 0) else {
+            return Ok(());
+        };
+        let cp = JournalCheckpoint {
+            sequence: e.sequence,
+            event_hash: e.hash,
+            runtime_key: self.rt.signer.public_key(),
+            runtime_instance: self.rt.instance,
+            created_at: self.now,
+        };
+        let obj = self.object(ObjectKind::JournalCheckpoint, None, &cp, true)?;
+        let ns = self.ns.to_string();
+        self.put(
+            records::CHECKPOINT,
+            &ns,
+            &records::CheckpointRecord {
+                digest: obj.digest(),
+                sequence: e.sequence,
+            },
+        )
     }
 
     pub fn into_batch(self, events: Vec<Event>) -> Result<WriteBatch, ProtocolError> {

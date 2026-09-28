@@ -28,9 +28,9 @@ use openaevc_core::{Clock, IdGenerator, IdGeneratorExt, ImmutableObject};
 use openaevc_crypto::Signer;
 use openaevc_protocol::{
     err, Command, CommandEnvelope, CommandReceipt, CommandResult, Digest, Envelope, ErrorCode,
-    Event, EventFilter, ImplementationInfo, JournalCheckpoint, Namespace, NamespaceId, ObjectKind,
-    Principal, PrincipalId, PrincipalKind, ProtocolError, PublicKey, Query, QueryEnvelope, Receipt,
-    RequestId, ResourceRef, RuntimeInfo, RuntimeInstanceId, SUPPORTED_CONTRACT, SUPPORTED_PROTOCOL,
+    Event, EventFilter, ImplementationInfo, Namespace, NamespaceId, ObjectKind, Principal,
+    PrincipalId, PrincipalKind, ProtocolError, PublicKey, Query, QueryEnvelope, Receipt, RequestId,
+    ResourceRef, RuntimeInfo, RuntimeInstanceId, SUPPORTED_CONTRACT, SUPPORTED_PROTOCOL,
 };
 use openaevc_store::{RequestRecord, Store};
 use serde::Serialize;
@@ -384,8 +384,9 @@ impl Runtime {
         if let Some(r) = self.check_replay(env, digest)? {
             return Ok(r);
         }
-        recovery::expire_leases(&self.shared, ns)?;
+        let now = recovery::expire_leases(&self.shared, ns)?;
         let mut tx = Tx::new(&self.shared, ns, ctx.principal)?;
+        tx.now = now;
         tx.request_id = Some(env.request_id);
         tx.actor = Some(ctx.principal);
         let name = env.body.name();
@@ -474,31 +475,6 @@ impl Runtime {
             true,
         )?;
         let events = tx.finish_events()?;
-        let interval = self.shared.config.checkpoint_interval.max(1);
-        let checkpoint_at = (first_seq..=last_seq).rev().find(|s| s % interval == 0);
-        if let Some(seq) = checkpoint_at {
-            let hash = events
-                .iter()
-                .find(|e| e.sequence == seq)
-                .map(|e| e.hash)
-                .ok_or_else(|| err::internal("checkpoint event"))?;
-            let cp = JournalCheckpoint {
-                sequence: seq,
-                event_hash: hash,
-                runtime_key: self.shared.signer.public_key(),
-                runtime_instance: self.shared.instance,
-                created_at: tx.now,
-            };
-            let obj = tx.object(ObjectKind::JournalCheckpoint, None, &cp, true)?;
-            tx.put(
-                records::CHECKPOINT,
-                &tx.ns.to_string(),
-                &records::CheckpointRecord {
-                    digest: obj.digest(),
-                    sequence: seq,
-                },
-            )?;
-        }
         let mut batch = tx.into_batch(events)?;
         batch.requests.push(RequestRecord {
             principal: env.caller,
