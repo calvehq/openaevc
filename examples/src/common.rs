@@ -33,6 +33,9 @@ pub fn open_embedded(data_root: &Path, extension_dirs: Vec<PathBuf>) -> Result<E
             public_key: admin.public_key(),
         }],
         extension_dirs,
+        // A lease must outlast the slowest step between heartbeats; each effect spawns the
+        // extension twice, which can take tens of seconds on a loaded machine.
+        lease_ms: 120_000,
         ..Default::default()
     };
     let deps = RuntimeDeps {
