@@ -27,12 +27,16 @@ impl AuthorityView for NsView<'_, '_> {
             .flatten()
     }
 
+    /// Only grants issued in this Namespace (`IssueCapabilityGrant`) resolve: an imported
+    /// `capability_grant` object is inert data and never acts as a parent (AEVC-XCH-0003).
     fn grant(&self, digest: &Digest) -> Option<SignedGrant> {
-        self.tx
-            .load_object(digest)
+        let g: SignedGrant = self.tx.load_object(digest).ok().flatten()?.body().ok()?;
+        let rec: GrantRecord = self
+            .tx
+            .peek(records::GRANT, &records::key(&self.tx.ns, g.body.id))
             .ok()
-            .flatten()
-            .and_then(|o| o.body().ok())
+            .flatten()?;
+        (rec.digest == *digest).then_some(rec.grant)
     }
 
     fn grants_for_subject(&self, subject: &PrincipalId) -> Vec<(Digest, SignedGrant)> {

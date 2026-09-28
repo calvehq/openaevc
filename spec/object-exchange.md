@@ -30,9 +30,15 @@ the claimed digest (`DIGEST_MISMATCH`), the bytes are canonical, the envelope an
 schema of the object kind, the protocol version is supported, and all signatures verify. Original
 signatures and provenance are preserved byte-for-byte.
 
-**AEVC-XCH-0003** Importing objects MUST NOT confer authority or trust: imported grants, principals
-and extension manifests are inert data. Principals, grants and extensions become effective only
-through the Namespace's own `RegisterPrincipal`, `IssueCapabilityGrant` and `RegisterExtension`.
+**AEVC-XCH-0003** Importing objects MUST NOT confer authority or trust: imported objects are inert
+data. In particular an imported `capability_grant` never authorizes and never resolves as a
+delegation parent (only grants issued with `IssueCapabilityGrant` do); an imported
+`promoted_pack` never becomes a `CreateBaseline` member; imported `evidence`,
+`verification_result` and `evaluation_result` objects are never accepted as verification,
+evaluation or qualification inputs (only results recorded for the pack are); and an imported
+`policy_document` never gates a pack or Baseline (only `RegisterPolicy` documents do).
+Principals, grants, extensions and policies become effective only through the Namespace's own
+`RegisterPrincipal`, `IssueCapabilityGrant`, `RegisterExtension` and `RegisterPolicy`.
 
 **AEVC-XCH-0004** Identical objects are stored once per physical store; logical visibility is
 per Namespace index. Re-importing a present object is a no-op that still records an

@@ -253,7 +253,8 @@ impl Runtime {
         let probe = Tx::new(&self.shared, ns, self.shared.runtime_principal)?;
         let namespace: Namespace = probe
             .peek(records::NAMESPACE, &ns.to_string())?
-            .ok_or_else(|| err::not_found(format!("namespace {ns} not found")))?;
+            // Unauthenticated callers learn nothing about which Namespaces exist.
+            .ok_or_else(|| err::unauthorized(format!("unknown namespace {ns} or caller")))?;
         let view = NsView {
             tx: &probe,
             roots: namespace.root_principals.clone(),
@@ -263,7 +264,20 @@ impl Runtime {
             .public_key
             .ok_or_else(|| err::unauthorized("caller has no key"))?;
         req.verify(&key)?;
-        let effective = resolve_caller(&view, env.caller, env.act_as)?;
+        let effective = match resolve_caller(&view, env.caller, env.act_as) {
+            Ok(p) => p,
+            Err(e) => {
+                // Authenticated but not allowed to act as the named actor (AEVC-AUTH-0007).
+                let ctx = Ctx {
+                    principal: env.caller,
+                    caller: env.caller,
+                    roots: namespace.root_principals.clone(),
+                    request_id: env.request_id,
+                };
+                drop(probe);
+                return self.audited(ns, &ctx, "act_as", Err(e));
+            }
+        };
         openaevc_authority::check_freshness(
             self.shared.clock.now(),
             env.issued_at,
@@ -399,10 +413,8 @@ impl Runtime {
         match handlers::dispatch(&mut tx, &ctx, body) {
             Ok(result) => self.commit(tx, env, name, digest, result),
             Err(e) => {
-                if is_authority_error(e.code) && self.shared.config.audit_denials {
-                    self.record_denial(ns, &ctx, name, &e)?;
-                }
-                Err(e)
+                drop(tx);
+                self.audited(ns, &ctx, name, Err(e))
             }
         }
     }
@@ -535,10 +547,16 @@ impl Runtime {
         let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
         let r = queries::dispatch(&tx, &ctx, req.envelope.body);
+        drop(tx);
+        self.audited(ns, &ctx, "query", r)
+    }
+
+    /// Records an authorization denial of an authenticated request (AEVC-AUTH-0007) and passes
+    /// the result through.
+    fn audited<T>(&self, ns: NamespaceId, ctx: &Ctx, what: &str, r: Result<T>) -> Result<T> {
         if let Err(e) = &r {
             if is_authority_error(e.code) && self.shared.config.audit_denials {
-                drop(tx);
-                self.record_denial(ns, &ctx, "query", e)?;
+                self.record_denial(ns, ctx, what, e)?;
             }
         }
         r
@@ -563,7 +581,9 @@ impl Runtime {
         };
         let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
-        authz(&tx, &ctx, "namespace.read", None)?;
+        let r = authz(&tx, &ctx, "namespace.read", None);
+        drop(tx);
+        self.audited(ns, &ctx, "subscribe", r)?;
         Ok(Subscription {
             filter: EventFilter {
                 namespace: ns,
@@ -580,7 +600,9 @@ impl Runtime {
         let _g = self.guard()?;
         let ns = sub.filter.namespace;
         let tx = Tx::new(&self.shared, ns, sub.ctx.principal)?;
-        authz(&tx, &sub.ctx, "namespace.read", None)?;
+        let r = authz(&tx, &sub.ctx, "namespace.read", None);
+        drop(tx);
+        self.audited(ns, &sub.ctx, "subscribe", r)?;
         let mut out = Vec::new();
         loop {
             let page = self
@@ -631,7 +653,8 @@ impl Runtime {
         Self::check_version(&req.envelope)?;
         let (ns, ctx) = self.authenticate(&req)?;
         let tx = Tx::new(&self.shared, ns, ctx.principal)?;
-        authz(&tx, &ctx, "object.read", None)?;
+        let r = authz(&tx, &ctx, "object.read", None);
+        self.audited(ns, &ctx, "GetObject", r)?;
         tx.load_object(digest)?
             .ok_or_else(|| err::not_found(format!("object {digest} not found")).with_object(digest))
     }

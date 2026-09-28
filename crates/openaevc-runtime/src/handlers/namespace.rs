@@ -223,6 +223,24 @@ pub(crate) fn revoke_grant(
     })
 }
 
+/// A policy document registered in this Namespace with `RegisterPolicy`. An imported
+/// `policy_document` object is inert data and can never act as a gate (AEVC-XCH-0003).
+pub(crate) fn registered_policy(
+    tx: &Tx<'_>,
+    d: &openaevc_protocol::Digest,
+) -> Result<PolicyDocument> {
+    let (_, doc): (_, PolicyDocument) = tx.require_object(d, ObjectKind::PolicyDocument)?;
+    let content = openaevc_crypto::digest_of(&doc)?;
+    let rec =
+        tx.peek::<openaevc_protocol::Digest>(records::POLICY, &records::key(&tx.ns, content))?;
+    if rec != Some(*d) {
+        return Err(
+            err::invalid(format!("policy {d} was not registered in this namespace")).with_object(d),
+        );
+    }
+    Ok(doc)
+}
+
 pub(crate) fn register_policy(
     tx: &mut Tx<'_>,
     ctx: &Ctx,

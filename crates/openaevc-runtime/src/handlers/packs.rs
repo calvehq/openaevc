@@ -123,7 +123,9 @@ pub(crate) fn validate_fields(
         .iter()
         .try_for_each(|b| names::validate_extension_id(b))?;
     names::validate_keys(metadata)?;
-    require_objects(tx, policies, ObjectKind::PolicyDocument)?;
+    for d in policies {
+        super::namespace::registered_policy(tx, d)?;
+    }
     require_objects(tx, conflicts, ObjectKind::PromotedPack)?;
     Ok(())
 }
