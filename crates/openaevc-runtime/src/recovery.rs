@@ -1,6 +1,6 @@
 //! Startup recovery and lease expiry (spec/recovery.md).
 
-use openaevc_protocol::{err, Digest, JournalCheckpoint, NamespaceId};
+use openaevc_protocol::{err, Digest, JournalCheckpoint, NamespaceId, Timestamp};
 
 use crate::records::{self, CheckpointRecord};
 use crate::{Result, Shared};
@@ -26,12 +26,29 @@ pub(crate) fn verify_journal(rt: &Shared, ns: NamespaceId) -> Result<()> {
             .store
             .get_object(&rec.digest)?
             .ok_or_else(|| err::integrity(format!("{ns}: checkpoint object missing")))?;
-        if obj.envelope().signatures.is_empty() {
-            return Err(err::integrity(format!("{ns}: checkpoint is unsigned")));
-        }
+        // Signatures were verified on load; the checkpoint must also be this runtime's own.
+        let key = rt.signer.public_key();
         let cp: JournalCheckpoint = obj.body()?;
+        if cp.runtime_key != key
+            || !obj
+                .envelope()
+                .signatures
+                .iter()
+                .any(|s| s.public_key == key)
+        {
+            return Err(err::integrity(format!(
+                "{ns}: checkpoint is not signed by this runtime's key"
+            )));
+        }
         let at = rt.store.read_events(&ns, cp.sequence - 1, 1)?;
-        if at.first().map(|e| (e.sequence, e.hash)) != Some((cp.sequence, cp.event_hash)) {
+        // The checkpointed event itself is re-hashed: verification resumes after it.
+        let rehashed = at
+            .first()
+            .map(openaevc_core::events::event_hash)
+            .transpose()?;
+        if at.first().map(|e| (e.sequence, e.hash)) != Some((cp.sequence, cp.event_hash))
+            || rehashed != Some(cp.event_hash)
+        {
             return Err(err::integrity(format!(
                 "{ns}: journal does not match signed checkpoint {}",
                 cp.sequence
@@ -50,6 +67,6 @@ pub(crate) fn verify_journal(rt: &Shared, ns: NamespaceId) -> Result<()> {
 }
 
 /// Marks executions whose lease expired as LOST. No-op until executions exist.
-pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<()> {
+pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<Timestamp> {
     crate::handlers::expire_leases(rt, ns)
 }

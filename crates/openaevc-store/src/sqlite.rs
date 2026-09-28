@@ -66,10 +66,11 @@ const MIGRATIONS: &[&str] = &[
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Durability {
-    /// fsync files and directories; SQLite `synchronous=FULL`.
+    /// SQLite `synchronous=FULL`: a commit is durable once it returns.
     Full,
-    /// Rely on the OS page cache; SQLite `synchronous=NORMAL`. Faster, may lose the latest
-    /// commits on power loss but never corrupts committed history.
+    /// SQLite `synchronous=NORMAL`: faster, may lose the latest commits on power loss but never
+    /// corrupts committed history. CAS files and directories are fsynced in both modes, so a
+    /// row that survives power loss never references bytes that did not.
     Normal,
 }
 
@@ -366,18 +367,30 @@ impl SqliteStore {
         Ok(())
     }
 
-    /// Writes an object into the CAS (idempotent; repairs a corrupt existing file).
+    /// Writes an object into the CAS (idempotent; repairs a corrupt existing file). The file
+    /// and its directory entries are durable before this returns, in every durability mode:
+    /// the referencing SQLite row may commit right after.
     fn stage_cas(&self, o: &ImmutableObject) -> Result<()> {
         let final_path = self.cas_path(&o.digest());
-        if let Ok(existing) = fs::read(&final_path) {
-            if openaevc_crypto::sha256(&existing) == o.digest() {
-                return Ok(());
-            }
-        }
         let dir = final_path
             .parent()
             .ok_or_else(|| err::internal("bad CAS path"))?;
-        fs::create_dir_all(dir).map_err(io_err)?;
+        if let Ok(existing) = fs::read(&final_path) {
+            if openaevc_crypto::sha256(&existing) == o.digest() {
+                // May be left by a crash before its fsyncs completed.
+                File::open(&final_path)
+                    .and_then(|f| f.sync_all())
+                    .map_err(io_err)?;
+                fsync_dir(dir);
+                return Ok(());
+            }
+        }
+        if !dir.exists() {
+            fs::create_dir_all(dir).map_err(io_err)?;
+            if let Some(parent) = dir.parent() {
+                fsync_dir(parent);
+            }
+        }
         let tmp =
             self.root
                 .join("tmp")
@@ -385,9 +398,7 @@ impl SqliteStore {
         {
             let mut f = File::create(&tmp).map_err(io_err)?;
             f.write_all(o.bytes()).map_err(io_err)?;
-            if self.opts.durability == Durability::Full {
-                f.sync_all().map_err(io_err)?;
-            }
+            f.sync_all().map_err(io_err)?;
         }
         self.hit(Failpoint::AfterCasTempWrite)?;
         fs::rename(&tmp, &final_path).map_err(io_err)?;
@@ -399,9 +410,7 @@ impl SqliteStore {
                 o.digest()
             )));
         }
-        if self.opts.durability == Durability::Full {
-            fsync_dir(dir);
-        }
+        fsync_dir(dir);
         Ok(())
     }
 
@@ -448,6 +457,7 @@ impl SqliteStore {
             rows.collect::<std::result::Result<_, _>>()
                 .map_err(db_err)?
         };
+        let mut unlink = Vec::new();
         for (d, in_cas) in &candidates {
             let still = tx
                 .query_row(
@@ -460,12 +470,17 @@ impl SqliteStore {
                 tx.execute("DELETE FROM objects WHERE digest=?1", params![d])
                     .map_err(db_err)?;
                 if *in_cas {
-                    let _ = fs::remove_file(self.cas_path(&parse(d)?));
+                    unlink.push(self.cas_path(&parse(d)?));
                 }
                 report.removed += 1;
             }
         }
         tx.commit().map_err(db_err)?;
+        // Only after the rows are gone: a crash in between leaves orphan files, never rows
+        // without bytes.
+        for path in unlink {
+            let _ = fs::remove_file(path);
+        }
         // Orphan CAS files (no row at all), e.g. from a crash between rename and commit.
         let now = SystemTime::now();
         for shard in fs::read_dir(self.root.join("objects/sha256")).map_err(io_err)? {
