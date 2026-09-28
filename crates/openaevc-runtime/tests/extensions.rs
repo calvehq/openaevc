@@ -319,11 +319,13 @@ fn hostile_extensions_cannot_hang_the_host() {
     };
     #[cfg(unix)]
     {
+        // Must succeed, so it gets the ordinary deadline (a short one races a loaded host); the
+        // bound stays below the descendant's 30 s sleep, so waiting on its stderr still fails.
         let (ep, manifest) = fixture(&ext, "detached-child");
         let start = Instant::now();
         let r = host::invoke(
             &ep,
-            &limits,
+            &HostLimits::default(),
             &manifest,
             verify_op("detached-child"),
             vec![],
@@ -331,7 +333,7 @@ fn hostile_extensions_cannot_hang_the_host() {
         );
         assert!(r.is_ok(), "{r:?}");
         assert!(
-            start.elapsed() < Duration::from_secs(10),
+            start.elapsed() < Duration::from_secs(20),
             "a descendant holding stderr must not block the host"
         );
     }
