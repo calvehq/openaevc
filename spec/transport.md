@@ -33,10 +33,18 @@ empty or omitted; the envelope digest (idempotency) is of the value as received.
 | `GET /v1/health/live`, `/v1/health/ready` | none | 200 / 503 |
 | `GET /v1/metrics` | none | Prometheus text |
 
-The `openaevc-envelope` header is the unpadded base64url of the envelope's canonical CBOR.
+The `openaevc-envelope` header is the unpadded base64url of the envelope's canonical CBOR. Clients
+that cannot set headers (browser `EventSource`) may pass the same value as an `envelope` query
+parameter on the `GET` endpoints; URLs are commonly logged, so such envelopes should carry a short
+`expires_at` (authority.md, AEVC-AUTH-0005). Query parameter values are percent-decoded.
 Responses honour `Accept: application/cbor`. Errors are `ProtocolError` bodies with HTTP status
 400 (request/encoding), 401, 403, 404, 409 (lifecycle/conflict), 422 (extension incompatible),
 500, 502 (extension failure) or 503 (integrity/recovery).
+
+A request the daemon abandons at its request timeout may still commit. The daemon then answers
+`INTERNAL` with `retryable: false`; clients learn the outcome by resending the *same* signed
+envelope, which returns the original receipt if the command committed (AEVC-AUTH-0006). A newly
+signed envelope is a new request.
 
 **AEVC-TRN-0003** `PUT /v1/objects/{digest}` MUST verify the body bytes against the signed digest;
 the object bytes travel outside the signature, whose digest commits to them.
