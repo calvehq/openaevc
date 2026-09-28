@@ -146,8 +146,9 @@ pub async fn run_effects<C: OpenAevcClient>(
         retry_of: None,
     };
     let (_, lease) = c.start_execution(request).await?;
-    c.heartbeat(&lease).await?;
     for e in effects {
+        // Keep the lease alive: effects can take a while (each spawns the extension).
+        c.heartbeat(&lease).await?;
         if !c.submit_effect(&lease, e).await? {
             return Err("effect rejected by the extension".into());
         }
