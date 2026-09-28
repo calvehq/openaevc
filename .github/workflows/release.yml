@@ -15,10 +15,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      # A release is cut only from a commit already on main (which passed ci.yml).
+      - name: Release commit is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - run: rustup show
-      - run: cargo test --workspace --locked
-      # Scenario K: the release daemon from a clean data root passes FULL conformance remotely.
-      - run: cargo test --release --locked -p openaevcd --test scenario_k
+      # Scenario J drives the daemon from every SDK.
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - name: Generated files and requirement coverage
+        run: |
+          cargo run -q --locked -p generate-schemas -- --check
+          cargo run -q --locked -p generate-sdks -- --check
+          cargo run -q --locked -p fixture-builder -- --check
+          python3 tooling/release-check/check.py --markers
+          python3 tooling/release-check/coverage.py
+      - run: cargo test --workspace --all-features --locked
+      # Scenario K: the release daemon from a clean data root passes FULL conformance remotely,
+      # including real restart recovery; the reports are release evidence.
+      - run: cargo test --release --locked -p openaevcd --test scenario_k -- --nocapture
+        env:
+          OPENAEVC_CONFORMANCE_REPORT_DIR: conformance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-conformance
+          path: conformance/*
+      - name: SDK suites
+        run: |
+          (cd sdk/typescript && npm ci && npm run typecheck && npm test)
+          (cd sdk/python && python -m unittest discover -s tests -p 'test_*.py')
+          (cd sdk/go && go vet ./... && go test ./...)
 
   binaries:
     needs: verify
@@ -56,8 +89,25 @@ jobs:
           name: bin-${{ matrix.target }}
           path: dist/*
 
+  # Third-party SBOM tooling runs without an OIDC token; only the signing job can mint one.
+  sbom:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: openaevc.spdx.json
+          upload-artifact: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: openaevc.spdx.json
+
   assemble:
-    needs: binaries
+    needs: [binaries, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -71,11 +121,6 @@ jobs:
           git archive --format=tar.gz --prefix=openaevc/ -o dist/openaevc-src.tar.gz HEAD
           tar czf dist/openaevc-schemas.tar.gz schemas
           tar czf dist/openaevc-conformance-fixtures.tar.gz fixtures
-      - uses: anchore/sbom-action@v0
-        with:
-          path: .
-          format: spdx-json
-          output-file: dist/openaevc.spdx.json
       - name: Checksums
         working-directory: dist
         run: sha256sum * > SHA256SUMS
