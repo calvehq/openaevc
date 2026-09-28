@@ -1,4 +1,5 @@
 """Cross-SDK golden fixtures."""
+import hashlib
 import json
 import pathlib
 import unittest
@@ -35,6 +36,14 @@ class Canonical(unittest.TestCase):
             self.assertEqual(crypto.sha256(b), c["digest"], c["name"])
             self.assertEqual(decode(b), c["json"], c["name"])
             self.assertEqual(encode(c["json"]).hex(), c["cbor_hex"], c["name"])
+            if "signing_digest" in c:
+                # Object digest covers the signatures; each signature covers the signing digest.
+                unsigned = {k: v for k, v in c["json"].items() if k != "signatures"}
+                sd = encode(unsigned)
+                self.assertEqual(crypto.sha256(sd), c["signing_digest"], c["name"])
+                for s in c["json"]["signatures"]:
+                    msg = hashlib.sha256(sd).digest()
+                    self.assertTrue(crypto.verify(s["public_key"], "object", msg, s["signature"]))
 
 
 class Signatures(unittest.TestCase):
@@ -43,6 +52,8 @@ class Signatures(unittest.TestCase):
             key = crypto.SigningKey(bytes.fromhex(c["seed_hex"]))
             self.assertEqual(key.public_key, c["public_key"])
             msg = encode(c["unsigned"])
+            if c["domain"] == "object":
+                msg = hashlib.sha256(msg).digest()
             self.assertEqual(msg.hex(), c["message_hex"])
             self.assertEqual(key.sign(c["domain"], msg), c["signature"])
             self.assertTrue(crypto.verify(c["public_key"], c["domain"], msg, c["signature"]))

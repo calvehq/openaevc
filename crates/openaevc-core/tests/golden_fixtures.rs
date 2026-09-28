@@ -88,6 +88,14 @@ fn every_object_kind_has_a_golden_fixture() {
             .collect();
         let want: Vec<String> = serde_json::from_value(c["references"].clone()).unwrap();
         assert_eq!(refs, want, "{}", c["name"]);
+        if let Some(sd) = c.get("signing_digest") {
+            assert_eq!(
+                openaevc_core::signing_digest(obj.envelope())
+                    .unwrap()
+                    .to_string(),
+                *sd
+            );
+        }
     }
     for c in f["invalid"].as_array().unwrap() {
         let bytes = unhex(c["cbor_hex"].as_str().unwrap());
@@ -109,13 +117,22 @@ fn signature_fixtures_are_reproducible() {
         use openaevc_crypto::Signer;
         let pk: PublicKey = c["public_key"].as_str().unwrap().parse().unwrap();
         assert_eq!(key.public_key(), pk);
-        let msg = openaevc_canonical::encode(&c["unsigned"]).unwrap();
-        assert_eq!(hex(&msg), c["message_hex"]);
+        let mut msg = openaevc_canonical::encode(&c["unsigned"]).unwrap();
         let domain = match c["domain"].as_str().unwrap() {
             "request" => openaevc_crypto::Domain::Request,
             "grant" => openaevc_crypto::Domain::Grant,
+            "object" => {
+                // Objects sign the 32 raw bytes of the signing digest.
+                let env: openaevc_protocol::ObjectEnvelope =
+                    serde_json::from_value(c["unsigned"].clone()).unwrap();
+                let d = openaevc_core::signing_digest(&env).unwrap();
+                assert_eq!(d.to_string(), c["signing_digest"]);
+                msg = d.as_bytes().to_vec();
+                openaevc_crypto::Domain::Object
+            }
             other => panic!("{other}"),
         };
+        assert_eq!(hex(&msg), c["message_hex"]);
         assert_eq!(key.sign(domain, &msg).to_string(), c["signature"]);
     }
 }

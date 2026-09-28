@@ -1,6 +1,7 @@
 package openaevc
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -78,6 +79,26 @@ func TestObjects(t *testing.T) {
 		if err != nil || hex.EncodeToString(re) != c["cbor_hex"] {
 			t.Errorf("%v: re-encode %v", c["name"], err)
 		}
+		if want, ok := c["signing_digest"]; ok {
+			// Object digest covers the signatures; each signature covers the signing digest.
+			unsigned := map[string]any{}
+			for k, v := range c["json"].(map[string]any) {
+				if k != "signatures" {
+					unsigned[k] = v
+				}
+			}
+			sd, _ := Encode(unsigned)
+			if Sha256(sd) != want {
+				t.Errorf("%v: signing digest", c["name"])
+			}
+			sum := sha256.Sum256(sd)
+			for _, s := range c["json"].(map[string]any)["signatures"].([]any) {
+				s := s.(map[string]any)
+				if !Verify(s["public_key"].(string), "object", sum[:], s["signature"].(string)) {
+					t.Errorf("%v: object signature", c["name"])
+				}
+			}
+		}
 	}
 }
 
@@ -92,14 +113,22 @@ func TestSignatures(t *testing.T) {
 			t.Errorf("public key mismatch")
 		}
 		msg, _ := Encode(c["unsigned"])
+		domain := c["domain"].(string)
+		if domain == "object" {
+			sum := sha256.Sum256(msg)
+			msg = sum[:]
+		}
 		if hex.EncodeToString(msg) != c["message_hex"] {
 			t.Errorf("message mismatch")
 		}
-		domain := c["domain"].(string)
 		if k.Sign(domain, msg) != c["signature"] || !Verify(k.PublicKey, domain, msg, c["signature"].(string)) {
 			t.Errorf("signature mismatch for %v", c["name"])
 		}
-		if Verify(k.PublicKey, "object", msg, c["signature"].(string)) {
+		other := "object"
+		if domain == "object" {
+			other = "request"
+		}
+		if Verify(k.PublicKey, other, msg, c["signature"].(string)) {
 			t.Errorf("cross-domain signature verified")
 		}
 	}

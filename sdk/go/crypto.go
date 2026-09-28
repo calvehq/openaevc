@@ -66,7 +66,7 @@ func KeyFromHex(h string) (*SigningKey, error) {
 	return NewSigningKey(b)
 }
 
-// Sign signs msg in the given domain (request, grant, object, checkpoint, receipt).
+// Sign signs msg in the given domain (request, grant, object).
 func (k *SigningKey) Sign(domain string, msg []byte) string {
 	return B64.EncodeToString(ed25519.Sign(k.priv, domainMessage(domain, msg)))
 }

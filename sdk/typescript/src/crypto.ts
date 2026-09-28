@@ -2,7 +2,7 @@
 import { createHash, createPrivateKey, createPublicKey, sign as edSign, verify as edVerify, randomBytes } from "node:crypto";
 import { encode, type Json } from "./canonical.ts";
 
-export type Domain = "request" | "grant" | "object" | "checkpoint" | "receipt";
+export type Domain = "request" | "grant" | "object";
 
 export function sha256(bytes: Uint8Array): string {
   return "sha256:" + createHash("sha256").update(bytes).digest("hex");

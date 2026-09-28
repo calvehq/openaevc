@@ -21,7 +21,7 @@ if os.environ.get("OPENAEVC_CRYPTO") == "cryptography":  # opt-in acceleration
             raise
         _FAST = False
 
-DOMAINS = ("request", "grant", "object", "checkpoint", "receipt")
+DOMAINS = ("request", "grant", "object")
 
 
 def sha256(data: bytes) -> str:

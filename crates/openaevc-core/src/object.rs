@@ -21,26 +21,26 @@ pub struct ImmutableObject {
     digest: Digest,
 }
 
-/// Digest that object signatures cover: canonical envelope with `signatures` omitted.
+/// Digest that object signatures cover: SHA-256 of the canonical envelope with `signatures`
+/// omitted. Each signature is over the 32 raw digest bytes in the `object` domain, so adding or
+/// removing a signature never changes what the other signatures cover (spec/object-model.md).
 pub fn signing_digest(env: &ObjectEnvelope) -> Result<Digest, ProtocolError> {
     let mut unsigned = env.clone();
     unsigned.signatures.clear();
     openaevc_crypto::digest_of(&unsigned)
 }
 
-/// Adds `signer`'s signature over the envelope's signing digest.
+/// Adds `signer`'s signature over the envelope's signing digest, replacing any earlier
+/// signature by the same key (at most one signature per key, AEVC-OBJ-0006).
 pub fn sign_envelope(
     mut env: ObjectEnvelope,
     signer: &dyn Signer,
 ) -> Result<ObjectEnvelope, ProtocolError> {
     let d = signing_digest(&env)?;
-    env.signatures.push(openaevc_crypto::sign_entry(
-        signer,
-        Domain::Object,
-        d.as_bytes(),
-    ));
+    let entry = openaevc_crypto::sign_entry(signer, Domain::Object, d.as_bytes());
+    env.signatures.retain(|s| s.public_key != entry.public_key);
+    env.signatures.push(entry);
     env.signatures.sort();
-    env.signatures.dedup();
     Ok(env)
 }
 
@@ -116,8 +116,14 @@ impl ImmutableObject {
             ));
         }
         validate_body(env.kind, &env.body)?;
-        if !env.signatures.windows(2).all(|w| w[0] < w[1]) {
-            return Err(err::encoding("object signatures must be sorted and unique"));
+        if !env
+            .signatures
+            .windows(2)
+            .all(|w| w[0].public_key < w[1].public_key)
+        {
+            return Err(err::encoding(
+                "object signatures must be sorted by public key, one per key",
+            ));
         }
         if !env.signatures.is_empty() {
             let d = signing_digest(env)?;
@@ -321,6 +327,43 @@ mod tests {
         assert_eq!(
             ImmutableObject::build(forged).unwrap_err().code,
             ErrorCode::Unauthorized
+        );
+    }
+
+    #[test]
+    fn signature_set_changes_object_identity_but_not_signing_digest() {
+        let (a, b) = (
+            SigningKey::from_seed([1; 32]),
+            SigningKey::from_seed([2; 32]),
+        );
+        let one = ImmutableObject::build(sign_envelope(blob(), &a).unwrap()).unwrap();
+        let ab = sign_envelope(sign_envelope(blob(), &a).unwrap(), &b).unwrap();
+        let ba = sign_envelope(sign_envelope(blob(), &b).unwrap(), &a).unwrap();
+        // Signing order does not matter: the list is canonical.
+        assert_eq!(ab, ba);
+        let two = ImmutableObject::build(ab.clone()).unwrap();
+        assert_ne!(one.digest(), two.digest());
+        assert_eq!(
+            signing_digest(one.envelope()).unwrap(),
+            signing_digest(two.envelope()).unwrap()
+        );
+        // Re-signing with the same key is idempotent.
+        assert_eq!(sign_envelope(ab.clone(), &a).unwrap(), ab);
+        // Unsorted or duplicate-key lists are not canonical.
+        let mut unsorted = ab.clone();
+        unsorted.signatures.reverse();
+        assert_eq!(
+            ImmutableObject::build(unsorted).unwrap_err().code,
+            ErrorCode::CanonicalEncodingError
+        );
+        let mut dup = ab;
+        let mut again = dup.signatures[0].clone();
+        again.signature = openaevc_crypto::sign_entry(&a, Domain::Object, b"other").signature;
+        dup.signatures.insert(1, again);
+        dup.signatures.sort();
+        assert_eq!(
+            ImmutableObject::build(dup).unwrap_err().code,
+            ErrorCode::CanonicalEncodingError
         );
     }
 

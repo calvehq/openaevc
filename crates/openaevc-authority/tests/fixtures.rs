@@ -43,6 +43,13 @@ impl AuthorityView for View {
     }
 }
 
+fn hex(s: &str) -> Vec<u8> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
+}
+
 #[test]
 fn authorization_matrix() {
     let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/authority/matrix.json");
@@ -70,7 +77,15 @@ fn authorization_matrix() {
         .map(|g| {
             let grant: SignedGrant = serde_json::from_value(g["grant"].clone()).unwrap();
             let d: Digest = serde_json::from_value(g["digest"].clone()).unwrap();
-            assert_eq!(openaevc_crypto::digest_of(&grant).unwrap(), d);
+            // The grant digest is the capability_grant object's digest, not the grant value's.
+            let bytes = hex(g["object_cbor_hex"].as_str().unwrap());
+            assert_eq!(openaevc_crypto::sha256(&bytes), d);
+            let env: ObjectEnvelope = openaevc_canonical::from_canonical(&bytes).unwrap();
+            assert_eq!(env.kind, ObjectKind::CapabilityGrant);
+            assert_eq!(
+                serde_json::from_value::<SignedGrant>(env.body).unwrap(),
+                grant
+            );
             (d, grant)
         })
         .collect();

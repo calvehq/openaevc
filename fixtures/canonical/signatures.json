@@ -1,5 +1,5 @@
 {
-  "description": "Ed25519 over \"OPENAEVC/1 <domain>\\n\" || canonical(unsigned value).",
+  "description": "Ed25519 over \"OPENAEVC/1 <domain>\\n\" || message. request and grant: message = canonical(unsigned value). object: message = the 32 raw bytes of SHA-256(canonical(envelope without signatures)).",
   "cases": [
     {
       "name": "command_envelope",
@@ -42,6 +42,26 @@
       },
       "message_hex": "a9626964781e6772745f61676634377a6c69636e7961706161616161616161616161636d656e6f6e6365675a334a68626e5166697373756572781e7072695f61676634377a6c69616a7961706161616161616161616161616967616374696f6e7381612a677375626a656374781e7072695f61676634377a6c69637279617061616161616161616161616371696e616d657370616365781d6e735f61676634377a6c696166796170616161616161616161616161656a657870697265735f6174781e323033302d30312d30315430303a30303a30302e3030303030303030305a6a6e6f745f6265666f7265781e323032342d30312d30315430303a30303a30302e3030303030303030305a7064656c65676174696f6e5f646570746800",
       "signature": "P-9V98GJuzaJhm3bM6gqCX9EF1wxp1z27ElnBA5s3N66ZMKaCvpLnErjT-XLjS1T3QhAiUPN8nv0moodV5ThAA"
+    },
+    {
+      "name": "object",
+      "domain": "object",
+      "seed_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+      "public_key": "ed25519:7UkoxijRwsbq6QM4kFmVYSlZJzpcY_k2NsFGFKyHN9E",
+      "unsigned": {
+        "kind": "blob",
+        "protocol_version": "0.1.0",
+        "namespace": "ns_agf47zliafyapaaaaaaaaaaaae",
+        "created_seq": 1,
+        "creator": "pri_agf47zliajyapaaaaaaaaaaaai",
+        "body": {
+          "media_type": "text/plain",
+          "data": "c2lnbmVk"
+        }
+      },
+      "signing_digest": "sha256:7c8cd6892f16c8aed5f9dcef97bf8a59943be4cf102068ef44e0b222acb4998e",
+      "message_hex": "7c8cd6892f16c8aed5f9dcef97bf8a59943be4cf102068ef44e0b222acb4998e",
+      "signature": "cd6T8-LAdAsuZcpST8K2p_qldy8BQgFKJ3T3G79_F6TPHVvOTeYAhElawO0fABvkXunRXMGm50e7ppTSuL5SAQ"
     }
   ]
 }
