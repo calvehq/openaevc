@@ -47,6 +47,8 @@ registry! {
     "capability.delegation", Authority, ["AEVC-CAP-0003"], authority::delegation;
     "capability.issuer_submits", Authority, ["AEVC-CAP-0004"], authority::issuer_submits;
     "capability.revocation", Authority, ["AEVC-CAP-0005"], authority::revocation;
+    "capability.constraints", Authority, ["AEVC-CAP-0006"], authority::constraints;
+    "capability.resource_scoped", Authority, ["AEVC-CAP-0007"], authority::resource_scoped;
     "namespace.isolation", Authority, ["AEVC-NS-0001", "AEVC-NS-0002", "AEVC-NS-0003", "AEVC-NS-0004"], authority::namespaces;
 
     "lifecycle.generations", Runtime, ["AEVC-LIFE-0001"], runtime::generations;
@@ -59,6 +61,7 @@ registry! {
     "execution.admission", Runtime, ["AEVC-EXE-0001", "AEVC-EXE-0003"], runtime::admission;
     "execution.scope_authority", Runtime, ["AEVC-EXE-0002", "AEVC-EXE-0007"], runtime::scope_authority;
     "execution.worker_rules", Runtime, ["AEVC-EXE-0004"], runtime::worker_rules;
+    "execution.provider_ownership", Runtime, ["AEVC-EXE-0009"], runtime::provider_ownership;
     "execution.lost", Runtime, ["AEVC-EXE-0005", "AEVC-EXE-0006"], runtime::lost;
     "execution.effects_and_provenance", Runtime, ["AEVC-EXE-0008", "AEVC-OBS-0001", "AEVC-OBS-0002"], runtime::effects;
     "evidence.binding", Runtime, ["AEVC-EVD-0001"], runtime::evidence;
@@ -74,12 +77,16 @@ registry! {
 
     "extension.confinement", ExtensionHost, ["AEVC-EXT-0001"], extension::confinement;
     "extension.pinning", ExtensionHost, ["AEVC-EXT-0002"], extension::pinning;
-    "extension.kinds", ExtensionHost, ["AEVC-EXT-0003", "AEVC-EXT-0004"], extension::kinds;
+    "extension.kinds", ExtensionHost, ["AEVC-EXT-0004", "AEVC-EXT-0010"], extension::kinds;
+    "extension.kind_conflicts", ExtensionHost, ["AEVC-EXT-0003"], extension::kind_conflicts;
+    "extension.upgrades", ExtensionHost, ["AEVC-EXT-0010"], extension::upgrades;
+    "extension.unsupported_capabilities", ExtensionHost, ["AEVC-EXT-0004", "AEVC-EXT-0009"], extension::unsupported_capabilities;
     "extension.capabilities", ExtensionHost, ["AEVC-EXT-0005"], extension::capabilities;
     "extension.limits", ExtensionHost, ["AEVC-EXT-0006"], extension::limits;
     "extension.environment", ExtensionHost, ["AEVC-EXT-0007"], extension::environment;
     "extension.reverification", ExtensionHost, ["AEVC-EXT-0008"], extension::reverification;
 
     "full.recovery", Full, ["AEVC-REC-0001", "AEVC-REC-0002", "AEVC-REC-0003", "AEVC-REC-0004"], full::recovery;
-    "full.exchange", Full, ["AEVC-XCH-0001", "AEVC-XCH-0003", "AEVC-OBJ-0004", "AEVC-OBJ-0005"], full::exchange;
+    "full.exchange", Full, ["AEVC-XCH-0001", "AEVC-OBJ-0004", "AEVC-OBJ-0005", "AEVC-BSL-0003"], full::exchange;
+    "full.inert_imports", Full, ["AEVC-XCH-0003", "AEVC-BSL-0002"], full::inert_imports;
 }

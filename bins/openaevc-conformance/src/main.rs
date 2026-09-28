@@ -6,6 +6,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use clap::{Parser, ValueEnum};
+use openaevc_conformance::lifecycle::ReferenceDaemon;
 use openaevc_conformance::{extension_target, Profile, Report, Target};
 use openaevc_crypto::SigningKey;
 use openaevc_protocol::PrincipalId;
@@ -45,6 +46,16 @@ struct Cli {
     /// Extension executable for `--target extension`.
     #[arg(long)]
     extension: Option<PathBuf>,
+    /// Launch and control this `openaevcd` binary for `--target remote` (test infrastructure:
+    /// enables the restart, lease-recovery and tamper cases). Needs `--daemon-config` and
+    /// `--daemon-data-root`; the config must listen on loopback TCP.
+    #[arg(long, requires_all = ["daemon_config", "daemon_data_root"])]
+    daemon: Option<PathBuf>,
+    #[arg(long)]
+    daemon_config: Option<PathBuf>,
+    /// The data root named in `--daemon-config` (tamper cases modify it).
+    #[arg(long)]
+    daemon_data_root: Option<PathBuf>,
     /// The remote runtime's journal checkpoint interval.
     #[arg(long, default_value_t = 1000)]
     checkpoint_interval: u64,
@@ -96,7 +107,26 @@ async fn report(cli: Cli) -> Result<Report, String> {
             openaevc_conformance::run(t, cli.profile, filter).await
         }
         TargetKind::Remote => {
-            let ep = cli.endpoint.ok_or("--target remote requires --endpoint")?;
+            let daemon = match (&cli.daemon, &cli.daemon_config, &cli.daemon_data_root) {
+                (Some(bin), Some(cfg), Some(root)) => {
+                    let d = Arc::new(ReferenceDaemon::new(bin.clone(), cfg.clone(), root.clone()));
+                    let addr = {
+                        let d = d.clone();
+                        tokio::task::spawn_blocking(move || d.launch())
+                            .await
+                            .map_err(|e| e.to_string())??
+                    };
+                    Some((d, addr))
+                }
+                _ => None,
+            };
+            let ep = match (&daemon, cli.endpoint) {
+                (Some((_, addr)), _) => addr.clone(),
+                (None, Some(ep)) => ep,
+                (None, None) => {
+                    return Err("--target remote requires --endpoint or --daemon".into())
+                }
+            };
             let ep = match ep.strip_prefix("unix:") {
                 #[cfg(unix)]
                 Some(p) => Endpoint::Unix(p.into()),
@@ -109,7 +139,10 @@ async fn report(cli: Cli) -> Result<Report, String> {
                     .as_ref()
                     .ok_or("--target remote requires --admin-key")?,
             )?;
-            let t = Target::remote(ep, key, id, cli.extensions, cli.checkpoint_interval);
+            let mut t = Target::remote(ep, key, id, cli.extensions, cli.checkpoint_interval);
+            if let Some((d, _)) = daemon {
+                t = t.with_lifecycle(d);
+            }
             openaevc_conformance::run(t, cli.profile, filter).await
         }
     })

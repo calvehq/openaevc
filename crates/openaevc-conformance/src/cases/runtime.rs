@@ -633,6 +633,8 @@ pub async fn effects(cx: &Ctx) -> CaseResult {
         .start_execution(cx.execution_request(pack, 2, wu, &["kv.set"]))
         .await
         .c()?;
+    // Workers keep the lease alive; extension invocations can be slow on a loaded target.
+    ns.root.heartbeat(&lease).await.c()?;
     let mut bad = kv_set("a", "1");
     bad.preconditions = vec![json!({"equals": "nope"})];
     ensure(
@@ -646,10 +648,12 @@ pub async fn effects(cx: &Ctx) -> CaseResult {
             .any(|e| e.kind == "effect.rejected"),
         "rejections are recorded",
     )?;
+    ns.root.heartbeat(&lease).await.c()?;
     ensure(
         ns.root.submit_effect(&lease, kv_set("a", "1")).await.c()?,
         "valid effect applies",
     )?;
+    ns.root.heartbeat(&lease).await.c()?;
     let obs = ns
         .root
         .command(Command::AppendObservation {
@@ -689,6 +693,7 @@ pub async fn effects(cx: &Ctx) -> CaseResult {
         "observations identify the exact generation",
     )?;
     // Structural change during execution invalidates further effects.
+    ns.root.heartbeat(&lease).await.c()?;
     ns.root.add_work_unit(pack, 2, "org.x.t").await.c()?;
     expect_code(
         ns.root
@@ -1481,4 +1486,36 @@ pub async fn transport(cx: &Ctx) -> CaseResult {
         }
     }
     Ok(())
+}
+
+/// AEVC-EXE-0009: a provider registration belongs to its principal; nobody else may replace it
+/// (and so take over driving its executions).
+pub async fn provider_ownership(cx: &Ctx) -> CaseResult {
+    let ns = cx.namespace().await?;
+    let owner = cx.member(&ns).await?;
+    let other = cx.member(&ns).await?;
+    for m in [&owner, &other] {
+        cx.grant(&ns, m.id, &["provider.register"]).await?;
+    }
+    let register = |c: &crate::target::Client, p: PrincipalId| {
+        let c = c.clone();
+        async move {
+            c.command(Command::RegisterProvider {
+                provider: crate::ctx::provider(p, false),
+            })
+            .await
+        }
+    };
+    register(&owner.client, owner.id).await.c()?;
+    let e = expect_code(
+        register(&other.client, other.id).await,
+        ErrorCode::Forbidden,
+    )?;
+    ensure(
+        e.missing_action.as_deref() == Some("provider.register"),
+        "hijack refusal names provider.register",
+    )?;
+    // The owner and a root may update it.
+    register(&owner.client, owner.id).await.c()?;
+    register(&ns.root, owner.id).await.c().map(drop)
 }

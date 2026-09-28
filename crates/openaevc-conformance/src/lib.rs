@@ -8,6 +8,7 @@
 pub mod cases;
 pub mod ctx;
 pub mod extension_target;
+pub mod lifecycle;
 pub mod report;
 pub mod target;
 
@@ -18,6 +19,10 @@ use std::time::Instant;
 pub use ctx::Ctx;
 pub use report::{CaseOutcome, Report, Status};
 pub use target::{Client, Target};
+
+/// Prefix of a case error meaning "this target cannot be driven through the case" (for example a
+/// restart on a remote target without a lifecycle). Such a case never counts as passed.
+pub const NOT_EXERCISED: &str = "NOT_EXERCISED: ";
 
 /// Conformance suite version (independent of protocol and package versions).
 pub const CONFORMANCE_VERSION: &str = "0.1.0";
@@ -90,6 +95,9 @@ pub async fn run(target: Target, profile: Profile, filter: Option<&str>) -> Repo
             None => match (case.run)(&cx).await {
                 Ok(()) => Status::Passed,
                 Err(e) if e.starts_with("SKIP: ") => Status::Skipped(e[6..].to_owned()),
+                Err(e) if e.starts_with(NOT_EXERCISED) => {
+                    Status::NotExercised(e[NOT_EXERCISED.len()..].to_owned())
+                }
                 Err(e) => Status::Failed(e),
             },
         };

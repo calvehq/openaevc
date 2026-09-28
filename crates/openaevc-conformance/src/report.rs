@@ -17,6 +17,9 @@ pub enum Status {
     Passed,
     Failed(String),
     Skipped(String),
+    /// The target could not be driven through the case (e.g. a restart on a remote target without
+    /// a lifecycle controller). Never counts as passed.
+    NotExercised(String),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -38,9 +41,11 @@ pub struct Report {
     pub passed: usize,
     pub failed: usize,
     pub skipped: usize,
+    pub not_exercised: usize,
     pub requirements_passed: BTreeSet<String>,
     pub requirements_failed: BTreeSet<String>,
     pub requirements_skipped: BTreeSet<String>,
+    pub requirements_not_exercised: BTreeSet<String>,
     pub cases: Vec<CaseOutcome>,
 }
 
@@ -60,9 +65,11 @@ impl Report {
             passed: 0,
             failed: 0,
             skipped: 0,
+            not_exercised: 0,
             requirements_passed: BTreeSet::new(),
             requirements_failed: BTreeSet::new(),
             requirements_skipped: BTreeSet::new(),
+            requirements_not_exercised: BTreeSet::new(),
             cases,
         };
         for c in &r.cases {
@@ -70,6 +77,7 @@ impl Report {
                 Status::Passed => r.passed += 1,
                 Status::Failed(_) => r.failed += 1,
                 Status::Skipped(_) => r.skipped += 1,
+                Status::NotExercised(_) => r.not_exercised += 1,
             }
         }
         for c in &r.cases {
@@ -81,23 +89,28 @@ impl Report {
                     Status::Skipped(_) => {
                         r.requirements_skipped.insert(req.clone());
                     }
+                    Status::NotExercised(_) => {
+                        r.requirements_not_exercised.insert(req.clone());
+                    }
                     Status::Passed => {
                         r.requirements_passed.insert(req.clone());
                     }
                 }
             }
         }
-        // A requirement passes only if no case covering it failed or was skipped.
+        // A requirement passes only if every case covering it passed.
         let failed = r.requirements_failed.clone();
         let skipped = r.requirements_skipped.clone();
+        let unexercised = r.requirements_not_exercised.clone();
         r.requirements_passed
-            .retain(|x| !failed.contains(x) && !skipped.contains(x));
+            .retain(|x| !failed.contains(x) && !skipped.contains(x) && !unexercised.contains(x));
         r
     }
 
-    /// Conformant when nothing failed; a FULL run additionally tolerates no skipped case.
+    /// Conformant only when every case of the profile passed (spec/conformance.md): a skipped or
+    /// not-exercised case means the profile was not demonstrated.
     pub fn conformant(&self) -> bool {
-        self.failed == 0 && (self.profile != Profile::Full || self.skipped == 0)
+        self.failed == 0 && self.skipped == 0 && self.not_exercised == 0 && !self.cases.is_empty()
     }
 
     pub fn summary(&self) -> String {
@@ -116,6 +129,7 @@ impl Report {
                 Status::Passed => ("PASS", String::new()),
                 Status::Failed(e) => ("FAIL", format!(" — {e}")),
                 Status::Skipped(e) => ("SKIP", format!(" — {e}")),
+                Status::NotExercised(e) => ("NOT_EXERCISED", format!(" — {e}")),
             };
             out.push_str(&format!(
                 "{mark} {} [{}]{detail}\n",
@@ -124,13 +138,15 @@ impl Report {
             ));
         }
         out.push_str(&format!(
-            "\n{} passed, {} failed, {} skipped; requirements: {} passed, {} failed, {} skipped — {}\n",
+            "\n{} passed, {} failed, {} skipped, {} not exercised; requirements: {} passed, {} failed, {} skipped, {} not exercised — {}\n",
             self.passed,
             self.failed,
             self.skipped,
+            self.not_exercised,
             self.requirements_passed.len(),
             self.requirements_failed.len(),
             self.requirements_skipped.len(),
+            self.requirements_not_exercised.len(),
             if self.conformant() { "CONFORMANT" } else { "NOT CONFORMANT" }
         ));
         out
@@ -152,7 +168,7 @@ impl Report {
             self.profile,
             self.cases.len(),
             self.failed,
-            self.skipped
+            self.skipped + self.not_exercised
         );
         for c in &self.cases {
             out.push_str(&format!(
@@ -169,6 +185,10 @@ impl Report {
                 Status::Skipped(e) => {
                     out.push_str(&format!("    <skipped message=\"{}\"/>\n", esc(e)))
                 }
+                Status::NotExercised(e) => out.push_str(&format!(
+                    "    <skipped message=\"NOT_EXERCISED: {}\"/>\n",
+                    esc(e)
+                )),
                 Status::Passed => {}
             }
             out.push_str("  </testcase>\n");

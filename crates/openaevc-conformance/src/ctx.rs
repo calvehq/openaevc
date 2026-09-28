@@ -329,10 +329,11 @@ impl Ctx {
             ))
             .await
             .c()?;
-        c.heartbeat(&lease).await.c()?;
         for e in effects {
+            c.heartbeat(&lease).await.c()?;
             ensure(c.submit_effect(&lease, e).await.c()?, "effect was rejected")?;
         }
+        c.heartbeat(&lease).await.c()?;
         c.complete_execution(&lease).await.c()?;
         Ok(generation + 1)
     }

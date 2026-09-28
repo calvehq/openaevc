@@ -103,7 +103,7 @@ pub fn check(path: &Path) -> Report {
             }
         }
     };
-    record("extension.manifest_names", &["AEVC-EXT-0003"], start, r);
+    record("extension.manifest_names", &["AEVC-EXT-0011"], start, r);
 
     // An operation for a kind the extension does not provide must be answered with an error,
     // not a crash or a protocol violation.
