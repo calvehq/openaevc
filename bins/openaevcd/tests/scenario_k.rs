@@ -40,7 +40,7 @@ async fn scenario_k_daemon_passes_full_conformance_remotely() {
         String::from_utf8_lossy(&out.stderr)
     );
     // Short intervals so checkpoint and lease-expiry cases finish quickly; extension limits
-    // below the misbehaving fixtures' 5 s sleep and 8 MiB output.
+    // below the misbehaving fixtures' 30 s sleep and 8 MiB output.
     let text: String = std::fs::read_to_string(&config)
         .unwrap()
         .replace("[listen]", "[listen]\ntcp = \"127.0.0.1:0\"")
@@ -57,7 +57,7 @@ async fn scenario_k_daemon_passes_full_conformance_remotely() {
             Some("lease_ms") => "lease_ms = 10000".to_owned(),
             Some("heartbeat_interval_ms") => "heartbeat_interval_ms = 2000".to_owned(),
             Some("tick_interval_ms") => "tick_interval_ms = 200".to_owned(),
-            Some("deadline_ms") => "deadline_ms = 3000".to_owned(),
+            Some("deadline_ms") => "deadline_ms = 10000".to_owned(),
             Some("max_frame_bytes") => "max_frame_bytes = 1048576".to_owned(),
             _ => l.to_owned(),
         })

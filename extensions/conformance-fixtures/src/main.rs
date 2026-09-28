@@ -133,7 +133,9 @@ impl Extension for Fixture {
                 pass()
             }
             "slow" => {
-                std::thread::sleep(std::time::Duration::from_secs(5));
+                // Well past any deadline a test target configures (10 s), so enforcement is
+                // observable without making ordinary invocations race a tight deadline.
+                std::thread::sleep(std::time::Duration::from_secs(30));
                 pass()
             }
             "crash" => std::process::exit(3),

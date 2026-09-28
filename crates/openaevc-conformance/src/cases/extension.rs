@@ -212,7 +212,7 @@ pub async fn limits(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let pack = sealed(&ns).await?;
     // Deadline and frame size depend on runtime configuration; the in-process target sets them
-    // below the fixtures' 5 s sleep and 8 MiB output.
+    // below the fixtures' 30 s sleep and 8 MiB output.
     // A remote target launched by the harness (lifecycle present) is configured below them too.
     let limited = !cx.target.is_remote() || cx.target.lifecycle().is_some();
     let modes: &[&str] = if limited {
@@ -245,7 +245,7 @@ pub async fn limits(cx: &Ctx) -> CaseResult {
         Ok(())
     } else {
         Err(format!(
-            "{}deadline and frame-size enforcement need a target configured below the fixtures' 5 s / 8 MiB (no lifecycle controller)",
+            "{}deadline and frame-size enforcement need a target configured below the fixtures' 30 s / 8 MiB (no lifecycle controller)",
             crate::NOT_EXERCISED
         ))
     }

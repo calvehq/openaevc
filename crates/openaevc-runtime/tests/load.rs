@@ -67,6 +67,16 @@ fn sustained_commands_stay_fast_and_consistent() {
         .unwrap();
         queries.push(t.elapsed());
     }
+    // Accidental O(n) work per command (O(n²) overall) shows as latency growing with the
+    // journal: compare the median of the first and last tenth of the run (in issue order).
+    let tenth = (commands.len() / 10).max(1);
+    let first = percentile(&mut commands[..tenth].to_vec(), 0.5);
+    let last = percentile(&mut commands[commands.len() - tenth..].to_vec(), 0.5);
+    println!("{n} packs: command median first tenth {first:?}, last tenth {last:?}");
+    assert!(
+        last <= first * 4 + Duration::from_millis(2),
+        "command latency grows with history: {first:?} -> {last:?}"
+    );
     let (p95_cmd, p50_query) = (
         percentile(&mut commands, 0.95),
         percentile(&mut queries, 0.50),

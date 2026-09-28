@@ -150,7 +150,7 @@ pub fn in_process_config(
         extension_dirs: extensions
             .map(|p| vec![p.to_path_buf()])
             .unwrap_or_default(),
-        extension_deadline_ms: 3_000,
+        extension_deadline_ms: 10_000,
         max_extension_frame: 1024 * 1024,
         ..RuntimeConfig::default()
     }

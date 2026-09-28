@@ -29,7 +29,7 @@ requirement is reported as passed only when every case citing it passed.
 ## Targets
 
 - **In-process**: the Rust reference runtime inside the runner (SQLite store in a temporary data
-  root, checkpoint interval 10, extension deadline 3 s, frame limit 1 MiB).
+  root, checkpoint interval 10, extension deadline 10 s, frame limit 1 MiB).
 - **Remote**: any implementation serving the v1 transport (`transport.md`). The runner needs an
   admin key for the target (to create Namespaces), and for `EXTENSION_HOST` the local path of
   the target's extension directory, into which the conformance fixture executables are installed.
