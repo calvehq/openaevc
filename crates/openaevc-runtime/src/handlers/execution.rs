@@ -389,6 +389,23 @@ fn require_live_lease(tx: &Tx<'_>, e: &Execution) -> Result<()> {
     }
 }
 
+/// The execution's pack, provided it is still OPEN at the admitted generation: after the pack
+/// moves on (new generation, seal, abandon, quarantine) the execution can no longer contribute.
+fn admitted_pack(tx: &mut Tx<'_>, e: &Execution) -> Result<ChangePack> {
+    let pack = packs::load(tx, e.pack)?;
+    if pack.state != openaevc_protocol::PackState::Open {
+        return Err(packs::state_error(&pack, "mutate"));
+    }
+    if pack.generation != e.generation {
+        return Err(ProtocolError::new(
+            ErrorCode::StaleGeneration,
+            "pack changed since the execution was admitted",
+        )
+        .with_generations(e.generation, pack.generation));
+    }
+    Ok(pack)
+}
+
 fn ensure_running(tx: &mut Tx<'_>, e: &mut Execution) -> Result<()> {
     if e.state == ExecutionState::Starting {
         let id = e.id;
@@ -423,6 +440,17 @@ pub(crate) fn heartbeat(
         .with_generations(generation, e.generation));
     }
     let l = e.lease.as_ref().ok_or_else(|| err::internal("lease"))?;
+    // Only a resumable provider may renew an expired lease, and only within one extra lease
+    // period; past that the execution is LOST even if the sweep has not recorded it yet.
+    let resumable = provider(tx, &e.provider)?.is_some_and(|p| p.resumable);
+    let grace = if resumable { tx.rt.config.lease_ms } else { 0 };
+    if exec::lease_expired(l, tx.now, grace) {
+        return Err(ProtocolError::new(
+            ErrorCode::ExecutionLost,
+            format!("execution {id} lease expired; start a new attempt"),
+        )
+        .with_object(id));
+    }
     let renewed = exec::renew(l, tx.now, tx.rt.config.lease_ms);
     let resumed = exec::lease_expired(l, tx.now, 0);
     e.lease = Some(renewed.clone());
@@ -488,17 +516,7 @@ pub(crate) fn submit_effect(
             &effect.target,
         )?);
     }
-    let mut pack = packs::load(tx, e.pack)?;
-    if pack.state != openaevc_protocol::PackState::Open {
-        return Err(packs::state_error(&pack, "mutate"));
-    }
-    if pack.generation != e.generation {
-        return Err(ProtocolError::new(
-            ErrorCode::StaleGeneration,
-            "pack changed since the execution was admitted",
-        )
-        .with_generations(e.generation, pack.generation));
-    }
+    let mut pack = admitted_pack(tx, &e)?;
     ensure_running(tx, &mut e)?;
     let prior = exec::prior_effects(&pack.candidate_effects, &effect.target);
     let scope = [effect.target.clone()];
@@ -692,6 +710,7 @@ pub(crate) fn complete(
 ) -> Result<CommandResult> {
     let mut e = load_for_worker(tx, ctx, id, lease, "execution.start")?;
     require_live_lease(tx, &e)?;
+    let mut pack = admitted_pack(tx, &e)?;
     ensure_running(tx, &mut e)?;
     let body = json!({"execution": id, "effects": e.effects.len()});
     transition(
@@ -701,7 +720,6 @@ pub(crate) fn complete(
         "execution.succeeded",
         body,
     )?;
-    let mut pack = packs::load(tx, e.pack)?;
     if let Some(u) = pack.work_units.iter_mut().find(|u| u.id == e.work_unit) {
         u.state = WorkUnitState::Completed;
     }
@@ -723,6 +741,7 @@ pub(crate) fn fail(
     reason: String,
 ) -> Result<CommandResult> {
     let mut e = load_for_worker(tx, ctx, id, lease, "execution.start")?;
+    require_live_lease(tx, &e)?;
     e.failure = Some(reason.clone());
     transition(
         tx,
@@ -772,12 +791,14 @@ pub(crate) fn cancel(
 }
 
 /// Marks executions whose lease (plus the resumable grace period) has expired as LOST, in a
-/// system transaction of its own. A lost execution never becomes successful.
-pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<()> {
+/// system transaction of its own. A lost execution never becomes successful. Returns the time
+/// the sweep used, so the command that follows judges leases at the same instant.
+pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<openaevc_protocol::Timestamp> {
     let mut tx = Tx::new(rt, ns, rt.runtime_principal)?;
+    let now = tx.now;
     let active = active_list(&mut tx)?;
     if active.is_empty() {
-        return Ok(());
+        return Ok(now);
     }
     for id in active {
         let Some(mut e) = tx.get::<Execution>(records::EXECUTION, &exe_key(&tx, id))? else {
@@ -804,13 +825,13 @@ pub(crate) fn expire_leases(rt: &Shared, ns: NamespaceId) -> Result<()> {
         }
     }
     if tx.event_count() == 0 {
-        return Ok(());
+        return Ok(now);
     }
     let events = tx.finish_events()?;
     let batch = tx.into_batch(events)?;
     rt.store.commit(batch)?;
     rt.notify.send_modify(|v| *v += 1);
-    Ok(())
+    Ok(now)
 }
 
 /// Records a runtime-owned VERIFIES/EVALUATES edge from a result object to its candidate.

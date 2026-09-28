@@ -311,6 +311,91 @@ fn stale_generation_blocks_effects_of_running_execution() {
     );
 }
 
+fn complete(
+    h: &Harness,
+    who: &Identity,
+    ns: NamespaceId,
+    exe: ExecutionId,
+    lease: &Lease,
+) -> Result<CommandReceipt, ProtocolError> {
+    h.client(who, ns).cmd(Command::CompleteExecution {
+        execution: exe,
+        lease: lease.id,
+    })
+}
+
+#[test]
+fn completion_cannot_touch_a_pack_that_moved_on() {
+    let (_ext, h, root, ns) = setup();
+    // New generation: the execution can no longer contribute, not even its completion.
+    let pack = h.create_pack(&root, ns);
+    let wu = h.add_work(&root, ns, pack);
+    let (exe, lease) = h.start(&root, ns, pack, wu);
+    heartbeat(&h, &root, ns, exe, &lease).unwrap();
+    h.add_work(&root, ns, pack);
+    let before = h.pack(&root, ns, pack);
+    assert_eq!(
+        complete(&h, &root, ns, exe, &lease).unwrap_err().code,
+        ErrorCode::StaleGeneration
+    );
+    assert_eq!(h.pack(&root, ns, pack), before);
+    // Terminal and quarantined packs are never changed by a late completion.
+    for (cmd, code) in [
+        ("abandon", ErrorCode::InvalidTransition),
+        ("quarantine", ErrorCode::Quarantined),
+    ] {
+        let pack = h.create_pack(&root, ns);
+        let wu = h.add_work(&root, ns, pack);
+        let (exe, lease) = h.start(&root, ns, pack, wu);
+        heartbeat(&h, &root, ns, exe, &lease).unwrap();
+        let g = h.pack(&root, ns, pack).generation;
+        h.client(&root, ns)
+            .cmd(match cmd {
+                "abandon" => Command::AbandonChangePack {
+                    pack,
+                    expected_generation: g,
+                },
+                _ => Command::QuarantineChangePack {
+                    pack,
+                    reason: "test".into(),
+                },
+            })
+            .unwrap();
+        let before = h.pack(&root, ns, pack);
+        assert_eq!(
+            complete(&h, &root, ns, exe, &lease).unwrap_err().code,
+            code,
+            "{cmd}"
+        );
+        assert_eq!(h.pack(&root, ns, pack), before, "{cmd}");
+    }
+}
+
+#[test]
+fn fail_is_refused_while_the_lease_awaits_resumption() {
+    let (_ext, h, root, ns) = setup();
+    h.client(&root, ns)
+        .cmd(Command::RegisterProvider {
+            provider: provider_descriptor(root.id(), true),
+        })
+        .unwrap();
+    let pack = h.create_pack(&root, ns);
+    let wu = h.add_work(&root, ns, pack);
+    let (exe, lease) = h.start(&root, ns, pack, wu);
+    h.clock.advance_millis(31_000);
+    let fail = Command::FailExecution {
+        execution: exe,
+        lease: lease.id,
+        reason: "late".into(),
+    };
+    assert_eq!(
+        h.client(&root, ns).cmd(fail.clone()).unwrap_err().code,
+        ErrorCode::Conflict
+    );
+    heartbeat(&h, &root, ns, exe, &lease).unwrap();
+    h.client(&root, ns).cmd(fail).unwrap();
+}
+
 #[test]
 fn wrong_lease_is_rejected() {
     let (_ext, h, root, ns) = setup();
