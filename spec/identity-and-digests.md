@@ -18,7 +18,7 @@ A typed identifier is `<prefix>_<base32>` where `<base32>` is the RFC 4648 base3
 
 Extensions are identified by reverse-DNS names (`org.example.kv`), not typed IDs.
 
-**AEVC-ID-0001** Parsers MUST accept identifiers case-insensitively and MUST emit lowercase.
+**AEVC-ID-0001** Parsers MUST accept identifiers case-insensitively (ASCII case folding only: any non-ASCII character is invalid) and MUST emit lowercase. Inside canonical objects only the lowercase form re-encodes identically, so an uppercase identifier there is rejected by AEVC-ENC-0007.
 
 **AEVC-ID-0002** Parsers MUST reject identifiers with an unknown or wrong prefix, a wrong length, non-zero trailing pad bits, or bytes that are not a UUIDv7 (version nibble 7, RFC 9562 variant).
 
@@ -38,7 +38,7 @@ digest": the body is hashed only as part of the envelope.
 | Name | Preimage | Used for |
 | --- | --- | --- |
 | **object digest** | canonical bytes of the complete envelope, `signatures` included | object identity, CAS key, every reference from another object, event, Baseline, promotion record or API field typed `Digest`, object exchange (`GetObject`, `PUT /v1/objects/{digest}`), closure and inventory queries, SDK `digestOf(envelope)`, and the `digest` field of `fixtures/canonical/objects.json` |
-| **signing digest** | canonical bytes of the envelope with `signatures` omitted | the message every object signature covers; never used as a reference |
+| **signing digest** | canonical bytes of the envelope with `signatures` omitted | the message every object signature covers (SDK `signingDigest(envelope)`); never used as a reference |
 
 Consequences:
 

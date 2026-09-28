@@ -2,7 +2,7 @@
 // Environment: OPENAEVC_ENDPOINT (host:port), OPENAEVC_ADMIN_KEY (JSON {id, seed}),
 // OPENAEVC_KV_ENTRYPOINT, OPENAEVC_KV_DIGEST.
 import { readFileSync } from "node:fs";
-import { Client, Session, SigningKey } from "../src/index.ts";
+import { Client, ProtocolError, Session, SigningKey } from "../src/index.ts";
 
 const [host, port] = process.env.OPENAEVC_ENDPOINT!.split(":");
 const admin = JSON.parse(readFileSync(process.env.OPENAEVC_ADMIN_KEY!, "utf8"));
@@ -44,4 +44,16 @@ for await (const e of c.events({ kinds: ["changepack.promoted"] })) {
   break;
 }
 if (seen !== 1) throw new Error("promotion event not observed");
+// Digest subjects survive percent-encoding in the query string.
+for await (const e of c.events({ subjects: [promoted] })) {
+  if (!e.subjects.includes(promoted)) throw new Error("subject filter returned an unrelated event");
+  break;
+}
+// Protocol error codes reach the caller intact.
+try {
+  await c.seal(pack, 2);
+  throw new Error("sealing a promoted pack succeeded");
+} catch (e) {
+  if (!(e instanceof ProtocolError) || e.code !== "IMMUTABLE_OBJECT") throw e;
+}
 console.log(`typescript e2e ok ${promoted}`);

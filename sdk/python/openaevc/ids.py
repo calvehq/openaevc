@@ -37,8 +37,11 @@ def new_id(prefix: str) -> str:
 
 def parse_id(text: str, prefix: str | None = None) -> str:
     """Validates a typed ID (case-insensitive input); returns the canonical lowercase form."""
+    # Case folding is ASCII-only, and the whole string must match (no trailing newline).
+    if not text.isascii():
+        raise ValueError(f"invalid identifier {text}")
     low = text.lower()
-    m = _ID.match(low)
+    m = _ID.fullmatch(low)
     if not m or m.group(1) not in ID_PREFIXES or (prefix and m.group(1) != prefix):
         raise ValueError(f"invalid identifier {text}")
     acc, bits, raw = 0, 0, bytearray()

@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import os
+import re
 
 from . import ed25519 as _pure
 from .canonical import encode
@@ -30,6 +31,12 @@ def sha256(data: bytes) -> str:
 
 def digest_of(value) -> str:
     return sha256(encode(value))
+
+
+def signing_digest(envelope: dict) -> str:
+    """SHA-256 of an object envelope's canonical encoding without `signatures`: object
+    signatures cover its 32 raw bytes (`object` domain); references use `digest_of(envelope)`."""
+    return digest_of({k: v for k, v in envelope.items() if k != "signatures"})
 
 
 def b64url(data: bytes) -> str:
@@ -74,9 +81,47 @@ class SigningKey:
         return b64url(sig)
 
 
+def _strict_b64(s: str, n: int):
+    """Canonical unpadded base64url of exactly `n` bytes, else None."""
+    if not isinstance(s, str) or not _B64.fullmatch(s):
+        return None
+    try:
+        b = from_b64url(s)
+    except ValueError:
+        return None
+    return b if len(b) == n and b64url(b) == s else None
+
+
+_B64 = re.compile(r"[A-Za-z0-9_-]*")
+_P = 2**255 - 19
+_L = 2**252 + 27742317777372353535851937790883648493
+# Encodings (sign bit cleared) of points of small order, canonical or not (as in libsodium).
+_SMALL_ORDER = {
+    bytes(32),
+    bytes([1]) + bytes(31),
+    bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"),
+    bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"),
+    bytes.fromhex("ec" + "ff" * 30 + "7f"),
+    bytes.fromhex("ed" + "ff" * 30 + "7f"),
+    bytes.fromhex("ee" + "ff" * 30 + "7f"),
+}
+
+
+def _weak_point(enc: bytes) -> bool:
+    cleared = enc[:31] + bytes([enc[31] & 0x7F])
+    return cleared in _SMALL_ORDER or int.from_bytes(cleared, "little") >= _P
+
+
 def verify(public_key: str, domain: str, msg: bytes, signature: str) -> bool:
-    raw = from_b64url(public_key.removeprefix("ed25519:"))
-    sig = from_b64url(signature)
+    """Strict Ed25519 (AEVC-ID-0006): canonical encodings, no small-order key or R, S < L."""
+    if not isinstance(public_key, str) or not public_key.startswith("ed25519:"):
+        return False
+    raw = _strict_b64(public_key[len("ed25519:"):], 32)
+    sig = _strict_b64(signature, 64)
+    if raw is None or sig is None:
+        return False
+    if _weak_point(raw) or _weak_point(sig[:32]) or int.from_bytes(sig[32:], "little") >= _L:
+        return False
     m = _message(domain, msg)
     if _FAST:
         try:

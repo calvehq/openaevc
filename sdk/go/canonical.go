@@ -80,6 +80,9 @@ func encodeInto(out *bytes.Buffer, v any) error {
 	case float64, float32:
 		return canonErr("floating-point values are not permitted")
 	case string:
+		if !utf8.ValidString(x) {
+			return canonErr("text is not valid UTF-8")
+		}
 		head(out, 3, uint64(len(x)))
 		out.WriteString(x)
 	case []any:

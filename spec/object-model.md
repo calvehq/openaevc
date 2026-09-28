@@ -29,6 +29,8 @@ Every immutable object is an envelope:
 
 **AEVC-OBJ-0003** An implementation MUST reject an object whose body does not decode strictly into the schema of its `kind`, whose kind is unknown, or whose `protocol_version` it does not support (`PROTOCOL_VERSION_UNSUPPORTED`).
 
+Rejection codes for object bytes, checked in this order: bytes that do not hash to the claimed digest, `DIGEST_MISMATCH`; bytes that are not canonical CBOR, or an envelope with an unknown field, a missing field or an unknown `kind` (the envelope is part of the canonical form), `CANONICAL_ENCODING_ERROR`; an unsupported `protocol_version`, `PROTOCOL_VERSION_UNSUPPORTED`; a body that does not decode strictly into its kind's schema (including unknown body fields and non-canonical timestamps), `INVALID_ARGUMENT`; an unsorted or repeated-key signature list, `CANONICAL_ENCODING_ERROR` (AEVC-OBJ-0006); a signature that does not verify, `UNAUTHORIZED`.
+
 ## Kinds
 
 | Kind | Body | Direct references (closure edges) |

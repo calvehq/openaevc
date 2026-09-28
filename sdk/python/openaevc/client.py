@@ -6,7 +6,9 @@ import os
 import socket
 
 from ._generated import PROTOCOL_VERSION
-from .canonical import decode, encode, prune
+import urllib.parse
+
+from .canonical import CanonicalError, decode, encode, prune
 from .crypto import SigningKey, b64url, sha256
 from .ids import new_id
 
@@ -91,9 +93,15 @@ class Client:
         finally:
             conn.close()
         if not 200 <= resp.status < 300:
+            # Error bodies follow the request's Accept header: CBOR for commands and queries.
             try:
-                detail = json.loads(data)
-            except ValueError:
+                if (resp.getheader("content-type") or "").startswith("application/cbor"):
+                    detail = decode(data)
+                else:
+                    detail = json.loads(data)
+                if not isinstance(detail, dict) or "code" not in detail:
+                    raise ValueError("not a ProtocolError body")
+            except (ValueError, CanonicalError):
                 detail = {"code": "INTERNAL", "message": f"HTTP {resp.status}", "retryable": False}
             raise ProtocolError(detail)
         return resp, data
@@ -135,7 +143,7 @@ class Client:
     def events(self, after: int = 0, kinds=(), subjects=(), timeout: float = 30.0):
         """Yields journal events (dicts) from the SSE stream."""
         env = self.session.envelope({"type": "ListEvents", "after": after, "kinds": list(kinds)})
-        qs = "&".join(f"subject={s}" for s in subjects)
+        qs = "&".join(f"subject={urllib.parse.quote(s, safe='')}" for s in subjects)
         conn = self._conn(timeout)
         conn.request("GET", "/v1/events" + (f"?{qs}" if qs else ""), headers={"host": "localhost", "openaevc-envelope": b64url(encode(env)), "accept": "text/event-stream"})
         resp = conn.getresponse()

@@ -91,6 +91,9 @@ func TestObjects(t *testing.T) {
 			if Sha256(sd) != want {
 				t.Errorf("%v: signing digest", c["name"])
 			}
+			if got, err := SigningDigest(c["json"].(map[string]any)); err != nil || got != want {
+				t.Errorf("%v: SigningDigest %v %v", c["name"], got, err)
+			}
 			sum := sha256.Sum256(sd)
 			for _, s := range c["json"].(map[string]any)["signatures"].([]any) {
 				s := s.(map[string]any)
@@ -130,6 +133,16 @@ func TestSignatures(t *testing.T) {
 		}
 		if Verify(k.PublicKey, other, msg, c["signature"].(string)) {
 			t.Errorf("cross-domain signature verified")
+		}
+	}
+}
+
+func TestInvalidSignatures(t *testing.T) {
+	for _, c := range load(t, "canonical/signatures.json")["invalid"].([]any) {
+		c := c.(map[string]any)
+		msg := unhex(t, c["message_hex"])
+		if Verify(c["public_key"].(string), c["domain"].(string), msg, c["signature"].(string)) {
+			t.Errorf("%v verified", c["name"])
 		}
 	}
 }

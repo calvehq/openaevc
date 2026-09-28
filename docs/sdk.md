@@ -29,9 +29,12 @@ signatures before returning.
 
 ## Other languages
 
-See `sdk/typescript/README.md`, `sdk/python/README.md` and `sdk/go/README.md`. Types are generated
-from the protocol JSON Schema (`cargo run -p generate-sdks`); the canonical encoder, identifiers
-and signing are hand-written and tested against the golden fixtures. Scenario J
+See `sdk/typescript/README.md`, `sdk/python/README.md` and `sdk/go/README.md`. The TypeScript
+types, and the protocol constants of all three SDKs (command and query names, error codes, object
+kinds, ID prefixes, versions), are generated from the protocol schema (`cargo run -p
+generate-sdks`); Python and Go values are plain dicts/maps. The canonical encoder, identifiers and
+signing are hand-written and tested against the golden fixtures. `verify` is strict Ed25519
+(canonical base64url, no small-order keys, canonical S) like the runtime's. Scenario J
 (`bins/openaevcd/tests/interop.rs`) drives one daemon from all four SDKs.
 
 ## Writing a client in a new language
@@ -39,7 +42,9 @@ and signing are hand-written and tested against the golden fixtures. Scenario J
 1. Implement deterministic CBOR per `spec/canonical-encoding.md` and pass
    `fixtures/canonical/values.json`.
 2. Implement Ed25519 with domain separation (`"OPENAEVC/1 request\n" || bytes`) and pass
-   `fixtures/canonical/signatures.json`.
+   `fixtures/canonical/signatures.json`, including its `invalid` cases. Object signatures cover
+   the 32 raw bytes of the object's signing digest, not its `sha256:` text
+   (`spec/identity-and-digests.md`).
 3. Build envelopes per `spec/transport.md`; timestamps use 9 fraction digits; send the value
    you signed.
 4. Run `openaevc-conformance --target remote` against a daemon that your client talks to, and use

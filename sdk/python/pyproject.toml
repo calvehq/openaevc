@@ -7,6 +7,7 @@ name = "openaevc"
 version = "0.1.0"
 description = "OpenAEVC Python client SDK (protocol 0.1.0); standard library only"
 license = { text = "Apache-2.0" }
+readme = "README.md"
 requires-python = ">=3.10"
 classifiers = ["License :: OSI Approved :: Apache Software License", "Programming Language :: Python :: 3"]
 
@@ -15,6 +16,7 @@ fast = ["cryptography>=42"]
 
 [tool.setuptools]
 packages = ["openaevc"]
+license-files = ["LICENSE"]
 
 [tool.openaevc]
 protocol = "0.1.0"

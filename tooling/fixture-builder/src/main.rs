@@ -665,16 +665,56 @@ fn signatures(cx: &Ctx) -> Value {
              "unsigned": gv, "message_hex": hex(&gmsg), "signature": key.sign(Domain::Grant, &gmsg)},
             {"name": "object", "domain": "object", "seed_hex": hex(&[3; 32]), "public_key": key.public_key(),
              "unsigned": ov, "signing_digest": od, "message_hex": hex(od.as_bytes()), "signature": key.sign(Domain::Object, od.as_bytes())},
-        ]
+        ],
+        "invalid": invalid_signatures(&key, &msg),
     })
+}
+
+/// Signatures every verifier must reject (strict Ed25519 and strict base64url, AEVC-ID-0006).
+fn invalid_signatures(key: &SigningKey, msg: &[u8]) -> Value {
+    let b64 = |b: &[u8]| openaevc_protocol::b64::encode(b);
+    let good = key.sign(Domain::Request, msg);
+    let pk = key.public_key().to_string();
+    // S + L: the same signature with a non-canonical scalar.
+    const L: [u8; 32] = [
+        0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde,
+        0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10,
+    ];
+    let mut high = good.as_bytes().to_vec();
+    let mut carry = 0u16;
+    for i in 0..32 {
+        let v = high[32 + i] as u16 + L[i] as u16 + carry;
+        high[32 + i] = v as u8;
+        carry = v >> 8;
+    }
+    let mut identity = [0u8; 32];
+    identity[0] = 1;
+    let mut forged = [0u8; 64];
+    forged[0] = 1;
+    let good_text = good.to_string();
+    json!([
+        {"name": "small_order_key_universal_forgery", "domain": "request", "message_hex": hex(msg),
+         "public_key": format!("ed25519:{}", b64(&identity)), "signature": b64(&forged)},
+        {"name": "non_canonical_s", "domain": "request", "message_hex": hex(msg),
+         "public_key": pk, "signature": b64(&high)},
+        {"name": "padded_signature", "domain": "request", "message_hex": hex(msg),
+         "public_key": pk, "signature": format!("{good_text}==")},
+        {"name": "invalid_base64_character", "domain": "request", "message_hex": hex(msg),
+         "public_key": pk, "signature": format!("{}!{}", &good_text[..10], &good_text[10..])},
+        {"name": "truncated_signature", "domain": "request", "message_hex": hex(msg),
+         "public_key": pk, "signature": good_text[..good_text.len() - 2].to_string()},
+    ])
 }
 
 fn identifiers(cx: &Ctx) -> Value {
     let cpk: ChangePackId = cx.ids.next();
     json!({
         "valid": [cx.ns.to_string(), cx.pri.to_string(), cpk.to_string(), cpk.to_string().to_uppercase().replacen("CPK_", "cpk_", 1),
+                  cpk.to_string().to_uppercase(),
                   format!("sha256:{}", "0".repeat(64)), "2024-05-01T12:00:00Z", "2024-05-01T12:00:00.123456789Z"],
         "invalid": ["cpk_", "cpk_agjdus24nvyadaareizuivlgo", "xyz_agjdus24nvyadaareizuivlgo4", "cpk_aaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    // Case folding is ASCII-only; no trailing whitespace.
+                    format!("c\u{212a}k_{}", &cpk.to_string()[4..]).replace("c\u{212a}k", "cp\u{212a}"), format!("{cpk}\n"),
                     format!("sha256:{}", "A".repeat(64)), format!("md5:{}", "0".repeat(32)), "2024-05-01T12:00:00+01:00", "2024-13-01T00:00:00Z", ""],
     })
 }
@@ -819,12 +859,13 @@ fn authority(cx: &Ctx) -> Value {
         "cases": [
             {"name": "root_implicit", "principal": root, "action": "baseline.create", "expect": "ALLOW", "chain": []},
             {"name": "direct_grant", "principal": alice, "action": "changepack.seal", "resource": res("app/1"), "expect": "ALLOW", "chain": [d_alice]},
+            {"name": "scoped_grant_is_not_namespace_wide", "principal": alice, "action": "changepack.seal", "expect": "FORBIDDEN", "chain": []},
             {"name": "resource_outside_selector", "principal": alice, "action": "kv.write", "resource": res("other/1"), "expect": "FORBIDDEN", "chain": []},
             {"name": "delegated", "principal": bob, "action": "changepack.create", "resource": res("app/2"), "expect": "ALLOW", "chain": [d_bob, d_alice]},
-            {"name": "delegation_widening", "principal": bob, "action": "baseline.create", "expect": "FORBIDDEN", "chain": []},
+            {"name": "delegation_widening", "principal": bob, "action": "baseline.create", "resource": res("app/2"), "expect": "FORBIDDEN", "chain": []},
             {"name": "default_deny", "principal": bob, "action": "changepack.promote", "expect": "FORBIDDEN", "chain": []},
-            {"name": "expired", "principal": carol, "action": "changepack.seal", "expect": "CAPABILITY_EXPIRED", "chain": []},
-        {"name": "forged_signature", "principal": carol, "action": "changepack.create", "expect": "FORBIDDEN", "chain": []},
+            {"name": "expired", "principal": carol, "action": "changepack.seal", "resource": res("app/3"), "expect": "CAPABILITY_EXPIRED", "chain": []},
+        {"name": "forged_signature", "principal": carol, "action": "changepack.create", "resource": res("app/3"), "expect": "FORBIDDEN", "chain": []},
             {"name": "revoked_parent", "principal": bob, "action": "changepack.create", "resource": res("app/2"), "revoked": [g_alice.body.id], "expect": "CAPABILITY_REVOKED", "chain": []},
         ],
     })

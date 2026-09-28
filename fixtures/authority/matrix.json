@@ -185,6 +185,13 @@
       ]
     },
     {
+      "name": "scoped_grant_is_not_namespace_wide",
+      "principal": "pri_agf47zlic5yapaaaaaaaaaaac4",
+      "action": "changepack.seal",
+      "expect": "FORBIDDEN",
+      "chain": []
+    },
+    {
       "name": "resource_outside_selector",
       "principal": "pri_agf47zlic5yapaaaaaaaaaaac4",
       "action": "kv.write",
@@ -215,6 +222,11 @@
       "name": "delegation_widening",
       "principal": "pri_agf47zlidbyapaaaaaaaaaaada",
       "action": "baseline.create",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/2",
+        "extension": "org.openaevc.reference.kv"
+      },
       "expect": "FORBIDDEN",
       "chain": []
     },
@@ -229,6 +241,11 @@
       "name": "expired",
       "principal": "pri_agf47zlidfyapaaaaaaaaaaade",
       "action": "changepack.seal",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/3",
+        "extension": "org.openaevc.reference.kv"
+      },
       "expect": "CAPABILITY_EXPIRED",
       "chain": []
     },
@@ -236,6 +253,11 @@
       "name": "forged_signature",
       "principal": "pri_agf47zlidfyapaaaaaaaaaaade",
       "action": "changepack.create",
+      "resource": {
+        "kind": "kv.entry",
+        "locator": "app/3",
+        "extension": "org.openaevc.reference.kv"
+      },
       "expect": "FORBIDDEN",
       "chain": []
     },
