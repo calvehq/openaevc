@@ -5,7 +5,11 @@
 //! * resource `kv.entry` (locator = key)
 //! * effects `kv.set {value: string}` and `kv.delete {}`, both requiring action `kv.write`
 //! * preconditions `{"absent": true}`, `{"present": true}`, `{"equals": "v"}`, evaluated against
-//!   the candidate's earlier effects on the same key
+//!   the candidate's earlier effects on the same key — and only those. This is a limitation of
+//!   this reference extension, not an OpenAEVC rule: a key set by an already accepted Baseline or
+//!   by another pack is "absent" here. The runtime attaches no meaning to preconditions; it only
+//!   hands the owning extension the candidate's earlier effects on the resource (`prior`), and
+//!   other extensions may define preconditions over any state they are given or configured with.
 //! * verifier `kv.expect` config `{key, value}` or `{key, absent: true}`
 //! * evaluator `kv.size` config `{max_keys}`
 //! * composition validator `kv.terminal-values`: two members that are not ordered relative to

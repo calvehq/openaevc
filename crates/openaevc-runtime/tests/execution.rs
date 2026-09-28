@@ -396,6 +396,62 @@ fn fail_is_refused_while_the_lease_awaits_resumption() {
     h.client(&root, ns).cmd(fail).unwrap();
 }
 
+/// Preconditions are extension law, not protocol law: the runtime passes them (with the
+/// candidate's earlier effects on the resource) to the owning extension and attaches no meaning
+/// of its own. reference-kv evaluates `{"absent": true}` against candidate-local history;
+/// reference-null ignores preconditions entirely, and the runtime applies both as told.
+#[test]
+fn precondition_semantics_belong_to_the_extension() {
+    let (ext, h, root, ns) = setup();
+    h.register_extension(&root, ns, &ext, "openaevc-ext-reference-null");
+    let absent = || vec![json!({"absent": true})];
+    let null_noop = || EffectProposal {
+        kind: "null.noop".into(),
+        target: ResourceRef {
+            kind: "null.item".into(),
+            locator: "same".into(),
+            version: None,
+            extension: "org.openaevc.reference.null".into(),
+        },
+        payload: json!({}),
+        preconditions: absent(),
+        outputs: vec![],
+    };
+    let pack = h.create_pack(&root, ns);
+    let wu = h.add_work(&root, ns, pack);
+    let g = h.pack(&root, ns, pack).generation;
+    let mut req = h.execution_request(pack, g, wu);
+    req.allowed_resources.push(ResourceSelector {
+        kind: "null.item".into(),
+        locator_prefix: None,
+    });
+    req.allowed_effects.push("null.noop".into());
+    let r = h
+        .client(&root, ns)
+        .cmd(Command::StartExecution { request: req })
+        .unwrap();
+    let (exe, lease): (ExecutionId, Lease) = (receipt_id(&r), r.result.lease.unwrap());
+    let state = |r: CommandReceipt| r.result.state.unwrap_or_default();
+    let mut kv = kv_set("k", "1");
+    kv.preconditions = absent();
+    // kv: the first set sees an absent key; the second sees the candidate's first set.
+    assert_eq!(
+        state(submit(&h, &root, ns, exe, &lease, kv.clone()).unwrap()),
+        "APPLIED"
+    );
+    assert_eq!(
+        state(submit(&h, &root, ns, exe, &lease, kv).unwrap()),
+        "REJECTED"
+    );
+    // null: the same precondition is meaningless to its extension, so the runtime applies both.
+    for _ in 0..2 {
+        assert_eq!(
+            state(submit(&h, &root, ns, exe, &lease, null_noop()).unwrap()),
+            "APPLIED"
+        );
+    }
+}
+
 #[test]
 fn wrong_lease_is_rejected() {
     let (_ext, h, root, ns) = setup();

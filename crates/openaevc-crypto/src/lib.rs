@@ -17,6 +17,14 @@ pub fn digest_of<T: Serialize + ?Sized>(v: &T) -> Result<Digest, ProtocolError> 
     Ok(sha256(&openaevc_canonical::to_canonical(v)?))
 }
 
+/// `n` bytes from the operating system's CSPRNG.
+pub fn random_bytes(n: usize) -> Vec<u8> {
+    use rand_core::RngCore;
+    let mut out = vec![0u8; n];
+    rand_core::OsRng.fill_bytes(&mut out);
+    out
+}
+
 /// Key fingerprint: SHA-256 of the raw 32-byte public key.
 pub fn fingerprint(key: &PublicKey) -> Digest {
     sha256(key.as_bytes())

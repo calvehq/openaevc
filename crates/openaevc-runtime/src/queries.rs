@@ -198,7 +198,7 @@ pub(crate) fn dispatch(tx: &Tx<'_>, ctx: &Ctx, q: Query) -> Result<Value> {
             )?;
             Ok(Value::Array(
                 recs.into_iter()
-                    .map(|(_, r)| json!({"id": r.manifest.id, "version": r.manifest.version, "manifest": r.manifest_digest, "active": r.active, "granted_host_capabilities": r.approved}))
+                    .map(|(_, r)| json!({"id": r.manifest.id, "version": r.manifest.version, "manifest": r.manifest_digest, "active": r.active, "granted_host_capabilities": r.approved, "unsupported_host_capabilities": handlers::extensions::unsupported_capabilities(&r.manifest)}))
                     .collect(),
             ))
         }

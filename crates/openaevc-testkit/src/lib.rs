@@ -385,6 +385,11 @@ pub const FIXTURE_MODES: &[&str] = &[
     "incompatible",
     "crash",
     "probe",
+    "detached-child",
+    "no-read",
+    "wants-unsupported",
+    "kind-thief",
+    "upgrade",
 ];
 
 /// Builds the extension packages once per test process and returns the target directory.

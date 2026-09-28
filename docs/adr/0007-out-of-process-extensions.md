@@ -9,4 +9,4 @@ Extensions run as subprocesses speaking length-prefixed canonical CBOR frames ov
 
 ## Consequences
 
-No third-party code is loaded into the runtime process. The reference host does not sandbox the OS process itself; host capabilities govern only the structured host calls. Per-invocation spawn costs latency; a pooled host is a future optimization that the contract already permits.
+No third-party code is loaded into the runtime process. The reference host does not sandbox the OS process itself; host capabilities govern only the structured host calls (ADR 0012). Per-invocation spawn costs latency; a pooled host is a future optimization that the contract already permits.

@@ -5,7 +5,7 @@ pub(crate) mod baseline;
 pub(crate) mod evidence;
 mod exchange;
 mod execution;
-mod extensions;
+pub(crate) mod extensions;
 mod graph;
 mod namespace;
 pub(crate) mod packs;

@@ -2,7 +2,11 @@
 //! selected by the executable's file name: `conformance-fixture-<mode>`.
 //!
 //! Modes: `well-behaved`, `undeclared-resource`, `undeclared-process`, `oversized`,
-//! `invalid-frame`, `wrong-digest`, `slow`, `incompatible`, `crash`, `probe`.
+//! `invalid-frame`, `wrong-digest`, `slow`, `incompatible`, `crash`, `probe`,
+//! `kind-thief` (another extension claiming `well-behaved`'s kinds), `upgrade` (version 0.2.0 of
+//! `well-behaved`), `wants-unsupported` (requests host capabilities the reference host cannot grant),
+//! `detached-child` (leaves a descendant holding stderr open), `no-read` (floods host calls
+//! without reading the replies, so the host's writes would block).
 #![forbid(unsafe_code)]
 
 use std::io::Write;
@@ -17,8 +21,16 @@ struct Fixture {
 }
 
 impl Fixture {
+    /// `kind-thief` and `upgrade` claim the kinds of `well-behaved`.
+    fn kind_owner(&self) -> &str {
+        match self.mode.as_str() {
+            "kind-thief" | "upgrade" => "well-behaved",
+            m => m,
+        }
+    }
+
     fn kind(&self, suffix: &str) -> String {
-        format!("fixture.{}.{suffix}", self.mode)
+        format!("fixture.{}.{suffix}", self.kind_owner())
     }
 }
 
@@ -31,8 +43,22 @@ impl Extension for Fixture {
             SUPPORTED_CONTRACT
         };
         ExtensionManifest {
-            id: format!("org.openaevc.conformance.{mode}"),
-            version: "0.1.0".into(),
+            // `upgrade` is a newer version of `well-behaved`; `kind-thief` is another
+            // extension (at a different version) claiming the same kinds.
+            id: format!(
+                "org.openaevc.conformance.{}",
+                if mode == "upgrade" {
+                    "well-behaved"
+                } else {
+                    mode
+                }
+            ),
+            version: if matches!(mode, "upgrade" | "kind-thief") {
+                "0.2.0"
+            } else {
+                "0.1.0"
+            }
+            .into(),
             protocol: SUPPORTED_PROTOCOL,
             contract,
             publisher: None,
@@ -49,8 +75,18 @@ impl Extension for Fixture {
             verifier_kinds: vec![self.kind("check")],
             evaluator_kinds: vec![],
             composition_validators: vec![],
-            // Requests resource reads only; never process execution.
-            host_capabilities: vec![HostCapability::ResourceRead],
+            // Requests resource reads only; never process execution. `wants-unsupported`
+            // also requests the capabilities the reference host implements no call for.
+            host_capabilities: if mode == "wants-unsupported" {
+                vec![
+                    HostCapability::ResourceRead,
+                    HostCapability::ResourceWrite,
+                    HostCapability::NetworkConnect,
+                    HostCapability::SecretRead,
+                ]
+            } else {
+                vec![HostCapability::ResourceRead]
+            },
             schemas: Default::default(),
             execution_modes: vec!["subprocess".into()],
             entrypoint: Entrypoint {
@@ -101,6 +137,35 @@ impl Extension for Fixture {
                 pass()
             }
             "crash" => std::process::exit(3),
+            "detached-child" => {
+                // The descendant inherits stderr and outlives this process.
+                let _ = std::process::Command::new("sleep")
+                    .arg("30")
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
+                    .spawn();
+                pass()
+            }
+            "no-read" => {
+                // Pipelined host calls whose replies are never read: the replies fill the
+                // host's pipe to this process.
+                let mut out = std::io::stdout().lock();
+                for call in 1..=1000u64 {
+                    let msg = openaevc_extension_contract::wire::ExtensionMessage::HostCall {
+                        invocation: 1,
+                        call,
+                        request: HostCall::ConfigResolve {
+                            key: format!("missing-key-with-a-long-name-{call:08}"),
+                        },
+                    };
+                    if openaevc_extension_contract::wire::write_frame(&mut out, &msg).is_err() {
+                        break;
+                    }
+                }
+                let _ = out.flush();
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                pass()
+            }
             "probe" => {
                 // Reports what the process can see: environment variable names and cwd.
                 let env: std::collections::BTreeSet<String> = std::env::vars_os()
