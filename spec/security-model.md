@@ -1,14 +1,10 @@
 # Security model
 
-This document is informative: it names the threats OpenAEVC is designed against and points to
-the normative requirements that address them. It adds no requirements of its own.
+This document is informative: it names the threats OpenAEVC is designed against and points to the normative requirements that address them. It adds no requirements of its own.
 
 ## Trust boundaries
 
-The runtime is the only authority. Everything that reaches it — consumers, providers, workers,
-extensions, imported objects and remote peers — is untrusted input. Embedding the runtime as a
-library does not make the caller trusted: embedded and remote callers pass the same admission
-path (AEVC-AUTH-0004, AEVC-TRN-0001).
+The runtime is the only authority. Everything that reaches it — consumers, providers, workers, extensions, imported objects and remote peers — is untrusted input. Embedding the runtime as a library does not make the caller trusted: embedded and remote callers pass the same admission path (AEVC-AUTH-0004, AEVC-TRN-0001).
 
 ## Threats and mitigations
 
@@ -31,23 +27,13 @@ path (AEVC-AUTH-0004, AEVC-TRN-0001).
 
 ## Extension trust boundary
 
-OpenAEVC v1 host capabilities govern OpenAEVC-mediated privileged operations; an extension
-executable is still subject only to the privileges of the operating-system identity that launched
-it. The reference host does not sandbox extension processes. A locally installed, registered
-extension is trusted code in the OS sense: if it runs as the daemon's user it can read the data
-root and the runtime signing key and write the database directly, and no protocol mechanism can
-prevent that. The guarantees in spec/extensions.md ("Trust boundary") are what the protocol
-enforces; OS containment (a separate user, container or sandbox for extension processes) is a
-deployment responsibility described in docs/operations.md.
+OpenAEVC v1 host capabilities govern OpenAEVC-mediated privileged operations; an extension executable is still subject only to the privileges of the operating-system identity that launched it. The reference host does not sandbox extension processes. A locally installed, registered extension is trusted code in the OS sense: if it runs as the daemon's user it can read the data root and the runtime signing key and write the database directly, and no protocol mechanism can prevent that. The guarantees in spec/extensions.md ("Trust boundary") are what the protocol enforces; OS containment (a separate user, container or sandbox for extension processes) is a deployment responsibility described in docs/operations/README.md.
 
 ## Known limitations of v1
 
-- Queries are not nonce-tracked and can be replayed within the freshness window
-  (AEVC-AUTH-0005); set a short `expires_at` on envelopes that may be logged.
-- The runtime signing key cannot be rotated in place: startup requires the latest checkpoint to
-  be signed by the configured key (AEVC-REC-0001).
-- There is no command to retire a compromised principal key; revoke its grants (a root key is
-  retired only by creating a new Namespace).
+- Queries are not nonce-tracked and can be replayed within the freshness window (AEVC-AUTH-0005); set a short `expires_at` on envelopes that may be logged.
+- The runtime signing key cannot be rotated in place: startup requires the latest checkpoint to be signed by the configured key (AEVC-REC-0001).
+- There is no command to retire a compromised principal key; revoke its grants (a root key is retired only by creating a new Namespace).
 - Extension digests are checked before spawn, not atomically with exec (spec/extensions.md).
 
 ## Security invariants of the reference implementation
@@ -56,11 +42,7 @@ deployment responsibility described in docs/operations.md.
 - Exact generation checks on every mutable write.
 - Digest and signature verification of every imported object.
 - Promotion is a single atomic transaction.
-- Extensions are never given database handles, storage paths or credentials through the
-  protocol, and no third-party code is loaded into the runtime process. (OS-level access is
-  governed by the OS identity the extension runs as; see above.)
+- Extensions are never given database handles, storage paths or credentials through the protocol, and no third-party code is loaded into the runtime process. (OS-level access is governed by the OS identity the extension runs as; see above.)
 - Remote transport requires TLS except on loopback and Unix sockets.
-- Secret material never enters events, errors or logs; errors never expose SQL, filesystem paths
-  or keys.
-- Private keys are written with owner-only permissions. Runtime signing goes through the
-  `Signer` trait, so deployments can keep keys in an HSM or OS key store.
+- Secret material never enters events, errors or logs; errors never expose SQL, filesystem paths or keys.
+- Private keys are written with owner-only permissions. Runtime signing goes through the `Signer` trait, so deployments can keep keys in an HSM or OS key store.

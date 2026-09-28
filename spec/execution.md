@@ -36,10 +36,6 @@ Roles: the **runtime** owns lifecycle, authority, provenance and candidate state
 
 **AEVC-EXE-0008** The pack MUST still be `OPEN` at the execution's generation (`STALE_GENERATION` otherwise). The owning extension validates the proposal against the effects already applied to the same resource in this candidate; a rejected proposal is recorded (`effect.rejected`, result state `REJECTED`) and not applied. An accepted proposal is applied by the extension and appended to the candidate with its outcome and complete provenance (`effect.applied`, result state `APPLIED`).
 
-An effect's `preconditions` are opaque to the runtime: it passes them, with the candidate's
-earlier effects on the same resource (`prior`), to the owning extension, which alone defines
-what they mean and what state they are evaluated against. The protocol defines no generic
-precondition or resource-state semantics; in particular, `prior` is candidate-local and says
-nothing about accepted Baselines.
+An effect's `preconditions` are opaque to the runtime: it passes them, with the candidate's earlier effects on the same resource (`prior`), to the owning extension, which alone defines what they mean and what state they are evaluated against. The protocol defines no generic precondition or resource-state semantics; in particular, `prior` is candidate-local and says nothing about accepted Baselines.
 
 Sealing freezes the candidate (changepack.md). Structural mutation during an execution creates a new generation, after which that execution can no longer contribute effects.

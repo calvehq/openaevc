@@ -1,22 +1,20 @@
 # Architecture
 
-Explanatory and non-normative; `spec/` is the authority. Crate names refer to the Rust reference
-implementation.
+Explanatory and non-normative; `spec/` is the authority. Crate names refer to the Rust reference implementation.
 
 ## Three state layers
 
 ```text
-Active Change Graph        Accepted Composition           Immutable Object Store
-(mutable, versioned)       (append-only)                  (content-addressed)
-ChangePacks + generations  PromotedPacks, Baselines  ───► canonical CBOR, sha256 digests,
-WorkUnits, Executions,     composition graphs             Ed25519 signatures
-leases, dependency edges          ▲                              ▲
-        │  promotion (one transaction) ─┘                        │
-        └──────── every accepted fact is an object ──────────────┘
+Active Change Graph             Accepted Composition           Immutable Object Store
+(mutable, versioned)            (append-only)                  (content-addressed)
+ChangePacks + generations       PromotedPacks, Baselines  ───► canonical CBOR, sha256 digests,
+WorkUnits, Executions,          composition graphs             Ed25519 signatures
+leases, dependency edges                ▲                              ▲
+        │──promotion (one transaction) ─┘                              │
+        └──────── every accepted fact is an object ────────────────────┘
 ```
 
-Mutable records carry an optimistic version (the generation for packs); immutable objects never
-change. Events are an append-only, hash-chained journal per Namespace with signed checkpoints.
+Mutable records carry an optimistic version (the generation for packs); immutable objects never change. Events are an append-only, hash-chained journal per Namespace with signed checkpoints.
 
 ## Command admission
 
@@ -26,10 +24,7 @@ envelope ─► protocol version ─► signature (domain "request") ─► call
         ─► handler (Tx overlay) ─► one atomic WriteBatch ─► signed receipt + events
 ```
 
-Every entry point — embedded `Runtime::execute`, HTTP, object upload, subscriptions — passes the
-same path (`openaevc-runtime`). Denials are audited as events. Authority is the caller's
-capability grants, checked for the exact action, Namespace and resource scope
-(`openaevc-authority`).
+Every entry point — embedded `Runtime::execute`, HTTP, object upload, subscriptions — passes the same path (`openaevc-runtime`). Denials are audited as events. Authority is the caller's capability grants, checked for the exact action, Namespace and resource scope (`openaevc-authority`).
 
 ## Execution
 
@@ -41,8 +36,7 @@ worker: Heartbeat · SubmitEffectProposal (validate_effect → apply_effect via 
 lease expiry (tick or lazily on next command) ─► LOST ─► retry with DERIVED_FROM lineage
 ```
 
-Only the lease holder can act. A structural change to the pack bumps its generation and makes
-later effects from the execution stale.
+Only the lease holder can act. A structural change to the pack bumps its generation and makes later effects from the execution stale.
 
 ## Extension host
 
@@ -55,8 +49,7 @@ runtime ──spawn (cleared env, cwd = extension dir)──► extension proces
         ◄─result | error ────────────────────────────  (frames: u32 length + canonical CBOR)
 ```
 
-One process per invocation, killed on deadline, oversize or malformed frames
-(`openaevc-extension-contract`).
+One process per invocation, killed on deadline, oversize or malformed frames (`openaevc-extension-contract`).
 
 ## Verification and evaluation
 

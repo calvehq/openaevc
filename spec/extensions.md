@@ -16,7 +16,7 @@ An extension is identified by a reverse-DNS ID (`org.openaevc.reference.kv`) and
 
 **AEVC-EXT-0002** The runtime MUST verify that SHA-256 of the executable equals the caller-pinned `artifact_digest` and the manifest's `artifact_digest`, and that the protocol and contract ranges intersect the runtime's, before registering; otherwise `EXTENSION_INCOMPATIBLE` and nothing is recorded.
 
-**AEVC-EXT-0003** A kind (resource, effect, verifier, evaluator or composition-validator name) may be provided by at most one active extension per Namespace. Registering an extension whose manifest claims a kind already claimed by a *different* active extension ID MUST fail with `CONFLICT`, whatever either version is, and record nothing: no manifest object, no event, no change to the registry.
+**AEVC-EXT-0003** A kind (resource, effect, verifier, evaluator or composition-validator name) may be provided by at most one active extension per Namespace. Registering an extension whose manifest claims a kind already claimed by a _different_ active extension ID MUST fail with `CONFLICT`, whatever either version is, and record nothing: no manifest object, no event, no change to the registry.
 
 **AEVC-EXT-0010** Re-registering an active extension ID replaces its registration (upgrade, including to a different version, or re-registration of the same manifest): the new manifest and grants become active and a new `extension.registered` event is appended, while earlier manifests remain immutable objects so promoted history stays resolvable. Unregistering an extension releases its kinds.
 
@@ -42,24 +42,9 @@ Host calls and the capability each requires: `resource.read` (resource.read), `p
 
 ## Trust boundary
 
-Host capabilities are **protocol authorization, not OS confinement**. They govern the
-OpenAEVC-mediated operations an extension may request from the host (host calls) and the outputs
-the runtime will accept from it. They do not restrict what the extension process can do through
-the operating system: an extension executable runs with the privileges of the operating-system
-identity that launched it, and can open files, sockets and processes that identity can reach.
-The reference host provides no OS sandbox. What OpenAEVC guarantees against a malicious
-extension is that it cannot change runtime state except through validated, recorded outputs;
-cannot obtain ungranted host calls, out-of-scope resources or runtime credentials through the
-protocol; and cannot keep the runtime from failing the invocation at its deadline
-(AEVC-EXT-0005 to AEVC-EXT-0007). It does not guarantee that a malicious executable cannot read or
-damage what its OS identity can access, including the data root and runtime key when it runs as
-the same user.
+Host capabilities are **protocol authorization, not OS confinement**. They govern the OpenAEVC-mediated operations an extension may request from the host (host calls) and the outputs the runtime will accept from it. They do not restrict what the extension process can do through the operating system: an extension executable runs with the privileges of the operating-system identity that launched it, and can open files, sockets and processes that identity can reach. The reference host provides no OS sandbox. What OpenAEVC guarantees against a malicious extension is that it cannot change runtime state except through validated, recorded outputs; cannot obtain ungranted host calls, out-of-scope resources or runtime credentials through the protocol; and cannot keep the runtime from failing the invocation at its deadline (AEVC-EXT-0005 to AEVC-EXT-0007). It does not guarantee that a malicious executable cannot read or damage what its OS identity can access, including the data root and runtime key when it runs as the same user.
 
-Registering an extension is therefore a decision to run that code with the runtime's OS
-privileges. Digest pinning (AEVC-EXT-0002, AEVC-EXT-0008) ensures the code that runs is the code
-that was approved; it is checked before each spawn, not atomically with it, so extension
-directories must not be writable by untrusted identities. Deployments that need containment run
-extensions under a separate OS identity or sandbox (docs/operations.md).
+Registering an extension is therefore a decision to run that code with the runtime's OS privileges. Digest pinning (AEVC-EXT-0002, AEVC-EXT-0008) ensures the code that runs is the code that was approved; it is checked before each spawn, not atomically with it, so extension directories must not be writable by untrusted identities. Deployments that need containment run extensions under a separate OS identity or sandbox (docs/operations/README.md).
 
 ## Reference extensions
 

@@ -1,6 +1,7 @@
 [package]
 name = "openaevc-sdk"
 description = "OpenAEVC Rust SDK: one client API over the embedded runtime and the openaevcd daemon."
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

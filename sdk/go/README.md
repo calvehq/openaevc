@@ -11,6 +11,4 @@ r, err := c.Command(map[string]any{"type": "CreateChangePack", "spec": map[strin
 
 Unix sockets: `openaevc.NewClient("unix:/var/lib/openaevc/openaevcd.sock", session)`.
 
-`Encode`/`Decode` implement deterministic CBOR (JSON numbers must be decoded with
-`UseNumber`, see `ParseJSON`). Tests: `go test ./...` (golden fixtures; `TestE2E` runs against a
-daemon when `OPENAEVC_ENDPOINT` is set).
+`Encode`/`Decode` implement deterministic CBOR (JSON numbers must be decoded with `UseNumber`, see `ParseJSON`). Tests: `go test ./...` (golden fixtures; `TestE2E` runs against a daemon when `OPENAEVC_ENDPOINT` is set).
