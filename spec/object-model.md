@@ -21,9 +21,11 @@ Every immutable object is an envelope:
 | `body`             | Kind-specific body.                                        |
 | `signatures`       | Optional sorted, unique list of `{public_key, signature}`. |
 
-**AEVC-OBJ-0001** An object's canonical bytes are the canonical encoding of the complete envelope, including signatures. Once created, those bytes MUST never change.
+**AEVC-OBJ-0001** An object's canonical bytes are the canonical encoding of the complete envelope, including signatures. Once created, those bytes MUST never change. The _object digest_ (SHA-256 of those bytes) is the object's identity and the only digest by which anything references it (identity-and-digests.md, "Digest roles").
 
-**AEVC-OBJ-0002** Object signatures cover the _signing digest_: SHA-256 of the canonical envelope with `signatures` omitted, in the `object` signature domain. Every present signature MUST verify before the object is accepted.
+**AEVC-OBJ-0002** Object signatures cover the _signing digest_: SHA-256 of the canonical envelope with `signatures` omitted. Each signature is Ed25519 over `"OPENAEVC/1 object\n" || <32 raw signing-digest bytes>`. Every present signature MUST verify before the object is accepted.
+
+**AEVC-OBJ-0006** `signatures` MUST be sorted by strictly ascending raw 32-byte public key, so it holds at most one signature per key. An implementation MUST reject an unsorted list or a repeated key (`CANONICAL_ENCODING_ERROR`); this check precedes signature verification. An empty list is omitted.
 
 **AEVC-OBJ-0003** An implementation MUST reject an object whose body does not decode strictly into the schema of its `kind`, whose kind is unknown, or whose `protocol_version` it does not support (`PROTOCOL_VERSION_UNSUPPORTED`).
 

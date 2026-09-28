@@ -23,14 +23,13 @@ pub fn fingerprint(key: &PublicKey) -> Digest {
 }
 
 /// Signature purposes. The signed message is `"OPENAEVC/1 <domain>\n" || message`, so a
-/// signature for one purpose can never be replayed as another.
+/// signature for one purpose can never be replayed as another. Receipts and journal
+/// checkpoints are immutable objects and are signed in the `object` domain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Domain {
     Request,
     Grant,
     Object,
-    Checkpoint,
-    Receipt,
 }
 
 impl Domain {
@@ -39,8 +38,6 @@ impl Domain {
             Domain::Request => "request",
             Domain::Grant => "grant",
             Domain::Object => "object",
-            Domain::Checkpoint => "checkpoint",
-            Domain::Receipt => "receipt",
         }
     }
 

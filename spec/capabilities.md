@@ -12,7 +12,7 @@ A capability grant is a `SignedGrant`: a `GrantBody` plus the issuer's Ed25519 s
 | `constraints` | Namespaced constraint map. Protocol 0.1 defines no core constraints; delegation must preserve them. |
 | `not_before` / `expires_at` | Validity window `[not_before, expires_at)`. |
 | `delegation_depth` | How many further delegation levels are allowed. |
-| `parent` | Digest of the parent grant object, for delegated grants. |
+| `parent` | Object digest of the parent's `capability_grant` object, for delegated grants. |
 | `nonce` | Issuer-chosen uniqueness value. |
 
 A pattern `p.*` matches any action or kind with prefix `p.` (at least one more segment).

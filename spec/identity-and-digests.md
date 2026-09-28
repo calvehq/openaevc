@@ -30,11 +30,39 @@ Typed identifiers carry identity, not integrity.
 
 **AEVC-ID-0004** The digest of an immutable object is SHA-256 of its exact canonical bytes (object-model.md), never of storage framing or compression.
 
+### Digest roles
+
+Protocol 0.1 has exactly two digests over an immutable object. There is no separate "body
+digest": the body is hashed only as part of the envelope.
+
+| Name | Preimage | Used for |
+| --- | --- | --- |
+| **object digest** | canonical bytes of the complete envelope, `signatures` included | object identity, CAS key, every reference from another object, event, Baseline, promotion record or API field typed `Digest`, object exchange (`GetObject`, `PUT /v1/objects/{digest}`), closure and inventory queries, SDK `digestOf(envelope)`, and the `digest` field of `fixtures/canonical/objects.json` |
+| **signing digest** | canonical bytes of the envelope with `signatures` omitted | the message every object signature covers; never used as a reference |
+
+Consequences:
+
+- Adding, removing or replacing a signature produces a *different object* with a different
+  object digest. Accepted bytes never change, so an accepted object's signature set is final.
+- Every signature covers the same signing digest, independent of the other signatures, so a
+  signature set has no circular dependency and signing order is irrelevant: the list has one
+  canonical order (AEVC-OBJ-0006).
+- Two objects with equal signing digests carry the same signed content; consumers that need
+  signer-independent comparison compare signing digests, but references always name an object
+  digest.
+
+A grant digest (`parent`, revocations, authorization chains) is the object digest of the
+`capability_grant` object holding the signed grant (capabilities.md). The remaining digests in
+the protocol are digests *of* a value, not object identities: request-envelope digests
+(idempotency, transport.md), Baseline graph digests (composition.md), event hashes (events.md),
+key fingerprints, and extension artifact
+digests (SHA-256 of the executable file).
+
 ## Keys and signatures
 
 Public keys are Ed25519, written `ed25519:<unpadded base64url of 32 bytes>`; signatures are the unpadded base64url of 64 bytes. A key fingerprint is SHA-256 of the raw 32-byte key.
 
-**AEVC-ID-0005** Every signature is computed over `"OPENAEVC/1 " || domain || "\n" || message` where `domain` is one of `request`, `grant`, `object`, `checkpoint`, `receipt`. A signature MUST NOT verify under a different domain.
+**AEVC-ID-0005** Every signature is computed over `"OPENAEVC/1 " || domain || "\n" || message` where `domain` is one of `request`, `grant`, `object`. A signature MUST NOT verify under a different domain. For `request` and `grant`, `message` is the canonical encoding of the unsigned value; for `object`, `message` is the 32 raw bytes of the signing digest (object-model.md). Receipts and journal checkpoints are immutable objects and are signed in the `object` domain.
 
 **AEVC-ID-0006** Verifiers MUST use strict Ed25519 verification (reject non-canonical signatures and small-order keys) and fail closed on malformed keys or signatures.
 

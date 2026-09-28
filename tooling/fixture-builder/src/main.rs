@@ -4,7 +4,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
-use openaevc_core::{sign_envelope, IdGeneratorExt, ImmutableObject, SequentialIds};
+use openaevc_core::{
+    sign_envelope, signing_digest, IdGeneratorExt, ImmutableObject, SequentialIds,
+};
 use openaevc_crypto::{Domain, Signer, SigningKey};
 use openaevc_protocol::*;
 use serde::Serialize;
@@ -515,24 +517,18 @@ fn objects(cx: &Ctx) -> Value {
         if kind == ObjectKind::Baseline {
             env.id = Some(baseline.id.to_string());
         }
-        let obj = ImmutableObject::build(env).unwrap();
-        let refs: Vec<String> = obj
-            .references()
-            .unwrap()
-            .iter()
-            .map(|d| d.to_string())
-            .collect();
-        valid.push(json!({
-            "name": name,
-            "kind": kind,
-            "json": openaevc_canonical::to_value(obj.envelope()).unwrap(),
-            "cbor_hex": hex(obj.bytes()),
-            "digest": obj.digest().to_string(),
-            "references": refs,
-        }));
+        valid.push(valid_object(name, env));
     }
-    // Invalid objects.
+    // The same content signed by two keys: a different object (identity covers the signature
+    // set) with the same signing digest.
     let blob_env = cx.env(ObjectKind::Blob, 1, &blob);
+    let both = sign_envelope(
+        sign_envelope(blob_env.clone(), &cx.key).unwrap(),
+        &cx.runtime_key,
+    )
+    .unwrap();
+    valid.push(valid_object("blob_two_signatures", both.clone()));
+    // Invalid objects.
     let good = ImmutableObject::build(blob_env.clone()).unwrap();
     let raw = |v: Value| hex(&openaevc_canonical::encode(&v).unwrap());
     let mut unknown = serde_json::to_value(&blob_env).unwrap();
@@ -555,6 +551,26 @@ fn objects(cx: &Ctx) -> Value {
     });
     let mut forged = sign_envelope(blob_env.clone(), &cx.runtime_key).unwrap();
     forged.created_seq = 99;
+    let mut unsorted = both.clone();
+    unsorted.signatures.reverse();
+    let mut duplicate = both.clone();
+    duplicate
+        .signatures
+        .insert(0, duplicate.signatures[0].clone());
+    // Wrong preimages: the canonical unsigned bytes instead of their SHA-256, and the signing
+    // digest in another domain.
+    let unsigned_bytes = openaevc_canonical::to_canonical(&blob_env).unwrap();
+    let sd = signing_digest(&blob_env).unwrap();
+    let with_sig = |sig: Signature| {
+        let mut e = blob_env.clone();
+        e.signatures = vec![SignatureEntry {
+            public_key: cx.key.public_key(),
+            signature: sig,
+        }];
+        raw(serde_json::to_value(&e).unwrap())
+    };
+    let over_bytes = with_sig(cx.key.sign(Domain::Object, &unsigned_bytes));
+    let wrong_domain = with_sig(cx.key.sign(Domain::Request, sd.as_bytes()));
     let invalid = json!([
         {"name": "digest_mismatch", "cbor_hex": hex(good.bytes()), "digest": openaevc_crypto::sha256(b"x").to_string(), "error": "DIGEST_MISMATCH"},
         {"name": "unknown_envelope_field", "cbor_hex": raw(unknown), "error": "CANONICAL_ENCODING_ERROR"},
@@ -564,9 +580,35 @@ fn objects(cx: &Ctx) -> Value {
         {"name": "unsupported_protocol_version", "cbor_hex": raw(future), "error": "PROTOCOL_VERSION_UNSUPPORTED"},
         {"name": "unknown_object_kind", "cbor_hex": raw(unknown_kind), "error": "CANONICAL_ENCODING_ERROR"},
         {"name": "forged_signature", "cbor_hex": raw(serde_json::to_value(&forged).unwrap()), "error": "UNAUTHORIZED"},
+        {"name": "unsorted_signatures", "cbor_hex": raw(serde_json::to_value(&unsorted).unwrap()), "error": "CANONICAL_ENCODING_ERROR"},
+        {"name": "duplicate_signer", "cbor_hex": raw(serde_json::to_value(&duplicate).unwrap()), "error": "CANONICAL_ENCODING_ERROR"},
+        {"name": "signature_over_unhashed_bytes", "cbor_hex": over_bytes, "error": "UNAUTHORIZED"},
+        {"name": "signature_in_wrong_domain", "cbor_hex": wrong_domain, "error": "UNAUTHORIZED"},
         {"name": "map_length_mismatch", "cbor_hex": format!("a1{}", &hex(good.bytes())[2..]), "error": "CANONICAL_ENCODING_ERROR"},
     ]);
     json!({"protocol_version": PROTOCOL_VERSION, "valid": valid, "invalid": invalid})
+}
+
+fn valid_object(name: &str, env: ObjectEnvelope) -> Value {
+    let obj = ImmutableObject::build(env).unwrap();
+    let refs: Vec<String> = obj
+        .references()
+        .unwrap()
+        .iter()
+        .map(|d| d.to_string())
+        .collect();
+    let mut v = json!({
+        "name": name,
+        "kind": obj.kind(),
+        "json": openaevc_canonical::to_value(obj.envelope()).unwrap(),
+        "cbor_hex": hex(obj.bytes()),
+        "digest": obj.digest().to_string(),
+        "references": refs,
+    });
+    if !obj.envelope().signatures.is_empty() {
+        v["signing_digest"] = json!(signing_digest(obj.envelope()).unwrap());
+    }
+    v
 }
 
 fn signatures(cx: &Ctx) -> Value {
@@ -604,13 +646,25 @@ fn signatures(cx: &Ctx) -> Value {
     };
     let gv = serde_json::to_value(&grant).unwrap();
     let gmsg = openaevc_canonical::encode(&gv).unwrap();
+    let object = cx.env(
+        ObjectKind::Blob,
+        1,
+        &Blob {
+            media_type: "text/plain".into(),
+            data: b"signed".to_vec(),
+        },
+    );
+    let ov = serde_json::to_value(&object).unwrap();
+    let od = signing_digest(&object).unwrap();
     json!({
-        "description": "Ed25519 over \"OPENAEVC/1 <domain>\\n\" || canonical(unsigned value).",
+        "description": "Ed25519 over \"OPENAEVC/1 <domain>\\n\" || message. request and grant: message = canonical(unsigned value). object: message = the 32 raw bytes of SHA-256(canonical(envelope without signatures)).",
         "cases": [
             {"name": "command_envelope", "domain": "request", "seed_hex": hex(&[3; 32]), "public_key": key.public_key(),
              "unsigned": unsigned, "message_hex": hex(&msg), "signature": key.sign(Domain::Request, &msg)},
             {"name": "grant", "domain": "grant", "seed_hex": hex(&[3; 32]), "public_key": key.public_key(),
              "unsigned": gv, "message_hex": hex(&gmsg), "signature": key.sign(Domain::Grant, &gmsg)},
+            {"name": "object", "domain": "object", "seed_hex": hex(&[3; 32]), "public_key": key.public_key(),
+             "unsigned": ov, "signing_digest": od, "message_hex": hex(od.as_bytes()), "signature": key.sign(Domain::Object, od.as_bytes())},
         ]
     })
 }
@@ -658,6 +712,23 @@ fn authority(cx: &Ctx) -> Value {
         parent,
         nonce: "Zml4dHVyZQ".into(),
     };
+    // Grants are referenced by the object digest of the `capability_grant` object holding them.
+    let seq = std::cell::Cell::new(0u64);
+    let object = |g: &SignedGrant| {
+        seq.set(seq.get() + 1);
+        let env = ObjectEnvelope {
+            kind: ObjectKind::CapabilityGrant,
+            protocol_version: PROTOCOL_VERSION,
+            namespace: cx.ns,
+            id: Some(g.body.id.to_string()),
+            created_seq: seq.get(),
+            creator: g.body.issuer,
+            body: serde_json::to_value(g).unwrap(),
+            signatures: vec![],
+        };
+        ImmutableObject::build(env).unwrap()
+    };
+    let entry = |o: &ImmutableObject| json!({"digest": o.digest(), "grant": o.envelope().body, "object_cbor_hex": hex(o.bytes())});
     let g_alice = sign_grant(
         body(
             cx.ids.next(),
@@ -671,7 +742,8 @@ fn authority(cx: &Ctx) -> Value {
         &root_k,
     )
     .unwrap();
-    let d_alice = openaevc_crypto::digest_of(&g_alice).unwrap();
+    let o_alice = object(&g_alice);
+    let d_alice = o_alice.digest();
     let g_bob = sign_grant(
         body(
             cx.ids.next(),
@@ -685,7 +757,8 @@ fn authority(cx: &Ctx) -> Value {
         &alice_k,
     )
     .unwrap();
-    let d_bob = openaevc_crypto::digest_of(&g_bob).unwrap();
+    let o_bob = object(&g_bob);
+    let d_bob = o_bob.digest();
     let g_bob_wide = sign_grant(
         body(
             cx.ids.next(),
@@ -699,7 +772,7 @@ fn authority(cx: &Ctx) -> Value {
         &alice_k,
     )
     .unwrap();
-    let d_bob_wide = openaevc_crypto::digest_of(&g_bob_wide).unwrap();
+    let o_bob_wide = object(&g_bob_wide);
     let g_carol_expired = sign_grant(
         body(
             cx.ids.next(),
@@ -713,7 +786,7 @@ fn authority(cx: &Ctx) -> Value {
         &root_k,
     )
     .unwrap();
-    let d_carol = openaevc_crypto::digest_of(&g_carol_expired).unwrap();
+    let o_carol = object(&g_carol_expired);
     let mut g_forged = sign_grant(
         body(
             cx.ids.next(),
@@ -728,20 +801,20 @@ fn authority(cx: &Ctx) -> Value {
     )
     .unwrap();
     g_forged.body.nonce = "Zm9yZ2Vk".into();
-    let d_forged = openaevc_crypto::digest_of(&g_forged).unwrap();
+    let o_forged = object(&g_forged);
     let res = |loc: &str| json!({"kind": "kv.entry", "locator": loc, "extension": "org.openaevc.reference.kv"});
     json!({
-        "description": "Authorization matrix. `expect` is ALLOW or an error code; `chain` lists grant digests leaf first.",
+        "description": "Authorization matrix. `expect` is ALLOW or an error code; `chain` lists grant digests leaf first. A grant digest (and every `parent`) is the object digest of the `capability_grant` object holding the signed grant: SHA-256 of `object_cbor_hex`.",
         "now": "2025-01-01T00:00:00.000000000Z",
         "namespace": cx.ns,
         "roots": [root],
         "principals": [principal(root, &root_k), principal(alice, &alice_k), principal(bob, &bob_k), principal(carol, &carol_k)],
         "grants": [
-            {"digest": d_alice, "grant": g_alice},
-            {"digest": d_bob, "grant": g_bob},
-            {"digest": d_bob_wide, "grant": g_bob_wide},
-            {"digest": d_carol, "grant": g_carol_expired},
-            {"digest": d_forged, "grant": g_forged},
+            entry(&o_alice),
+            entry(&o_bob),
+            entry(&o_bob_wide),
+            entry(&o_carol),
+            entry(&o_forged),
         ],
         "cases": [
             {"name": "root_implicit", "principal": root, "action": "baseline.create", "expect": "ALLOW", "chain": []},

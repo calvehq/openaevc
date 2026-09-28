@@ -74,6 +74,54 @@ pub async fn objects_invalid_rejected(cx: &Ctx) -> CaseResult {
     Ok(())
 }
 
+/// Object identity covers the signature set; every signature covers the same signing digest.
+pub async fn signature_identity(cx: &Ctx) -> CaseResult {
+    let ns = cx.namespace().await?;
+    let f = fixtures("objects")?;
+    let two = f["valid"]
+        .as_array()
+        .ok_or("fixtures")?
+        .iter()
+        .find(|c| c["name"] == "blob_two_signatures")
+        .ok_or("blob_two_signatures fixture")?;
+    let mut unsigned = two["json"].clone();
+    let sigs = unsigned
+        .as_object_mut()
+        .ok_or("object")?
+        .remove("signatures")
+        .and_then(|s| s.as_array().cloned())
+        .ok_or("signatures")?;
+    let enc = |v: &Value| openaevc_canonical::encode(v).map_err(|e| e.to_string());
+    ensure(
+        openaevc_crypto::sha256(&enc(&unsigned)?).to_string() == two["signing_digest"],
+        "signing digest is SHA-256 of the envelope without signatures",
+    )?;
+    // Every subset of a valid signature set is a valid, distinct object.
+    let mut one = unsigned.clone();
+    one["signatures"] = json!([sigs[0]]);
+    let mut seen = std::collections::BTreeSet::new();
+    for v in [unsigned.clone(), one, two["json"].clone()] {
+        let bytes = enc(&v)?;
+        let digest = openaevc_crypto::sha256(&bytes);
+        import(cx, &ns, digest, bytes.clone()).await.c()?;
+        let back = ns.root.get_object(digest).await.c()?;
+        ensure(back.bytes() == bytes.as_slice(), "object bytes changed")?;
+        ensure(
+            seen.insert(digest),
+            "signature sets must yield distinct object digests",
+        )?;
+    }
+    // Signing order has no effect: only the canonical (sorted) order is accepted.
+    let mut reversed = two["json"].clone();
+    reversed["signatures"] = json!(sigs.iter().rev().collect::<Vec<_>>());
+    let bytes = enc(&reversed)?;
+    expect_code(
+        import(cx, &ns, openaevc_crypto::sha256(&bytes), bytes).await,
+        ErrorCode::CanonicalEncodingError,
+    )
+    .map(drop)
+}
+
 pub async fn envelope_data_model(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let cases = [

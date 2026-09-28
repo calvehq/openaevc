@@ -24,7 +24,8 @@ macro_rules! registry {
 
 registry! {
     "core.objects.round_trip", Core, ["AEVC-OBJ-0001", "AEVC-ID-0003", "AEVC-ID-0004", "AEVC-ENC-0004", "AEVC-XCH-0004"], core::objects_round_trip;
-    "core.objects.invalid_rejected", Core, ["AEVC-OBJ-0002", "AEVC-OBJ-0003", "AEVC-ENC-0005", "AEVC-ENC-0007", "AEVC-XCH-0002", "AEVC-VER-0004", "AEVC-ID-0008"], core::objects_invalid_rejected;
+    "core.objects.invalid_rejected", Core, ["AEVC-OBJ-0002", "AEVC-OBJ-0003", "AEVC-OBJ-0006", "AEVC-ENC-0005", "AEVC-ENC-0007", "AEVC-XCH-0002", "AEVC-VER-0004", "AEVC-ID-0008"], core::objects_invalid_rejected;
+    "core.objects.signature_identity", Core, ["AEVC-OBJ-0001", "AEVC-OBJ-0002", "AEVC-OBJ-0006"], core::signature_identity;
     "core.envelope.data_model", Core, ["AEVC-ENC-0001", "AEVC-ENC-0002", "AEVC-ENC-0003"], core::envelope_data_model;
     "core.envelope.key_order", Core, ["AEVC-ENC-0008"], core::key_order;
     "core.text.byte_exact", Core, ["AEVC-ENC-0006"], core::text_byte_exact;
