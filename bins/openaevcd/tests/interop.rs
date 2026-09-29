@@ -94,7 +94,12 @@ fn find(tool: &str, extra: &[PathBuf]) -> Option<PathBuf> {
     let path = std::env::var_os("PATH").unwrap_or_default();
     std::env::split_paths(&path)
         .chain(extra.iter().cloned())
-        .map(|d| d.join(tool))
+        .flat_map(|d| {
+            [
+                d.join(tool),
+                d.join(format!("{tool}{}", std::env::consts::EXE_SUFFIX)),
+            ]
+        })
         .find(|p| p.is_file())
 }
 
@@ -229,7 +234,7 @@ fn scenario_j_all_sdks_against_one_daemon() {
         None => missing.push("node"),
     }
     // Python.
-    match find("python3", &[]) {
+    match find("python3", &[]).or_else(|| find("python", &[])) {
         Some(py) => {
             let mut c = Command::new(py);
             c.current_dir(root.join("sdk/python")).arg("tests/e2e.py");
