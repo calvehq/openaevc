@@ -209,6 +209,7 @@ impl Config {
         }
     }
 
+    #[cfg(unix)]
     pub fn unix_socket(&self) -> PathBuf {
         self.listen
             .unix_socket
