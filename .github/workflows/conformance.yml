@@ -1,7 +1,5 @@
 name: conformance
 on:
-  schedule:
-    - cron: "0 3 * * *"
   workflow_dispatch:
 permissions:
   contents: read
