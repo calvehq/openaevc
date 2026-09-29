@@ -378,7 +378,9 @@ impl SqliteStore {
         if let Ok(existing) = fs::read(&final_path) {
             if openaevc_crypto::sha256(&existing) == o.digest() {
                 // May be left by a crash before its fsyncs completed.
-                File::open(&final_path)
+                fs::OpenOptions::new()
+                    .write(true)
+                    .open(&final_path)
                     .and_then(|f| f.sync_all())
                     .map_err(io_err)?;
                 fsync_dir(dir);
