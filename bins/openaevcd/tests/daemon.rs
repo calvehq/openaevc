@@ -154,6 +154,7 @@ fn runs_serves_and_shuts_down_gracefully() {
     let dir = tempfile::tempdir().unwrap();
     let (config, _) = init(dir.path());
     with_tcp(&config);
+    #[cfg_attr(not(unix), allow(unused_mut, unused_variables))]
     let (mut d, addr) = start(&config);
     assert_eq!(http_get(&addr, "/v1/health/ready").0, 200);
     let (status, body) = http_get(&addr, "/v1/info");
