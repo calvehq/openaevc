@@ -16,7 +16,7 @@
     "e2e": "node --experimental-strip-types test/e2e.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.4",
     "typescript": "^5.8.0"
   },
   "openaevc": { "protocol": "0.1.0", "contract": "0.1.0" }
