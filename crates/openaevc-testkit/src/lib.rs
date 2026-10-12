@@ -397,9 +397,14 @@ fn built_extensions() -> &'static Path {
     static DIR: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
     DIR.get_or_init(|| {
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-        let status = std::process::Command::new(cargo)
+        let mut cmd = std::process::Command::new(cargo);
+        cmd.arg("build");
+        // Build in the test binary's profile so the binaries land in its target dir.
+        if !cfg!(debug_assertions) {
+            cmd.arg("--release");
+        }
+        let status = cmd
             .args([
-                "build",
                 "-q",
                 "-p",
                 "openaevc-ext-reference-kv",
@@ -411,7 +416,7 @@ fn built_extensions() -> &'static Path {
             .status()
             .expect("run cargo build for extensions");
         assert!(status.success(), "building extensions failed");
-        // <target>/debug/deps/<test-binary> -> <target>/debug
+        // <target>/<profile>/deps/<test-binary> -> <target>/<profile>
         let exe = std::env::current_exe().expect("current exe");
         exe.parent()
             .and_then(|p| p.parent())
