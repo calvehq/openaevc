@@ -4,6 +4,10 @@ All notable changes are documented here. Protocol, extension-contract and confor
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-12
+
+Protocol 0.1.0, extension contract 0.1.0, conformance suite 0.1.0, data root schema 1.
+
 ### Added
 
 - Initial OpenAEVC implementation: protocol 0.1.0, extension contract 0.1.0, conformance 0.1.0.
@@ -14,6 +18,7 @@ All notable changes are documented here. Protocol, extension-contract and confor
 - SDKs for Rust, TypeScript, Python and Go.
 - Conformance suite: CORE, AUTHORITY, RUNTIME, EXTENSION_HOST and FULL profiles; in-process, remote and extension targets; JSON and JUnit reports.
 - `openaevcd gc` for offline removal of unindexed bytes.
+- Release workflow publishes to crates.io, npm (with provenance) and PyPI (trusted publishing) on a `v*` tag.
 
 ### Release-candidate audit
 

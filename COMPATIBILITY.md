@@ -1,8 +1,8 @@
 # Compatibility
 
-| Package version | Protocol | Extension contract | Conformance suite | Data root schema |
-| --------------- | -------- | ------------------ | ----------------- | ---------------- |
-| 0.1.0           | 0.1.0    | 0.1.0              | 0.1.0             | 1                |
+| Package version | Released   | Protocol | Extension contract | Conformance suite | Data root schema |
+| --------------- | ---------- | -------- | ------------------ | ----------------- | ---------------- |
+| 0.1.0           | 2026-10-12 | 0.1.0    | 0.1.0              | 0.1.0             | 1                |
 
 Pre-1.0, breaking protocol changes increment the minor version. After 1.0: patch = clarification with no wire break, minor = backward-compatible addition, major = incompatible.
 

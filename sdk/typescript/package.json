@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "OpenAEVC TypeScript client SDK (protocol 0.1.0)",
   "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/calvehq/openaevc.git", "directory": "sdk/typescript" },
   "type": "module",
   "engines": { "node": ">=22.6" },
   "exports": { ".": "./dist/index.js" },
