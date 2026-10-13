@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Arc;
 
-use openaevc_crypto::SigningKey;
-use openaevc_protocol::*;
+use openaevc::crypto::SigningKey;
+use openaevc::protocol::*;
 use openaevc_sdk::{EmbeddedClient, OpenAevcClient, Session, TypedClient};
 
 use crate::common::{key_principal, new_namespace, open_embedded};
@@ -49,8 +49,8 @@ fn body(
 }
 
 fn fresh_grant_id() -> GrantId {
-    use openaevc_core::IdGeneratorExt;
-    openaevc_core::UuidV7Ids::new(Arc::new(openaevc_core::SystemClock)).next()
+    use openaevc::core::IdGeneratorExt;
+    openaevc::core::UuidV7Ids::new(Arc::new(openaevc::core::SystemClock)).next()
 }
 
 pub async fn run(data_root: &Path) -> Result<Outcome> {

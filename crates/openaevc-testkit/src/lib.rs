@@ -6,12 +6,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Arc;
 
-use openaevc_core::request::sign_request;
-use openaevc_core::{Clock, FixedClock, IdGenerator, IdGeneratorExt, UuidV7Ids};
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::*;
-use openaevc_runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
-use openaevc_store::{MemoryStore, SqliteOptions, SqliteStore, Store};
+use openaevc::core::request::sign_request;
+use openaevc::core::{Clock, FixedClock, IdGenerator, IdGeneratorExt, UuidV7Ids};
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::*;
+use openaevc::runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::store::{MemoryStore, SqliteOptions, SqliteStore, Store};
 use serde_json::Value;
 
 /// 2025-01-01T00:00:00Z.
@@ -265,7 +265,7 @@ impl Harness {
             parent,
             nonce: b64::encode(&self.ids.next_bytes()),
         };
-        openaevc_authority::sign_grant(body, issuer.key()).expect("sign grant")
+        openaevc::authority::sign_grant(body, issuer.key()).expect("sign grant")
     }
 
     /// Root issues `actions` to `subject`; returns the grant ID.
@@ -285,7 +285,7 @@ impl Harness {
     }
 
     /// A fresh typed ID from the harness generator.
-    pub fn ids_next<T: openaevc_core::FromUuid>(&self) -> T {
+    pub fn ids_next<T: openaevc::core::FromUuid>(&self) -> T {
         self.ids.next()
     }
 
@@ -459,7 +459,7 @@ impl Extensions {
     }
 
     pub fn digest(&self, name: &str) -> Digest {
-        openaevc_crypto::sha256(&std::fs::read(self.path(name)).expect("read extension"))
+        openaevc::crypto::sha256(&std::fs::read(self.path(name)).expect("read extension"))
     }
 }
 
@@ -656,7 +656,7 @@ impl Harness {
         who: &Identity,
         ns: NamespaceId,
         pack: PackId,
-        harness: &mut dyn openaevc_execution::Harness,
+        harness: &mut dyn openaevc::execution::Harness,
     ) -> ExecutionId {
         let wu = self.add_work(who, ns, pack);
         let (exe, lease) = self.start(who, ns, pack, wu);
@@ -680,7 +680,7 @@ impl Harness {
     }
 }
 
-/// [`openaevc_execution::ExecutionSession`] backed by signed runtime commands.
+/// [`openaevc::execution::ExecutionSession`] backed by signed runtime commands.
 pub struct ClientSession<'h> {
     pub client: Client<'h>,
     pub execution: ExecutionId,
@@ -696,9 +696,9 @@ impl std::fmt::Debug for ClientSession<'_> {
     }
 }
 
-use openaevc_execution::ExecutionSession as _;
+use openaevc::execution::ExecutionSession as _;
 
-impl openaevc_execution::ExecutionSession for ClientSession<'_> {
+impl openaevc::execution::ExecutionSession for ClientSession<'_> {
     fn heartbeat(&mut self) -> Result<(), ProtocolError> {
         self.client
             .cmd(Command::HeartbeatExecution {
@@ -739,7 +739,7 @@ pub struct ScriptedHarness {
     pub effects: Vec<EffectProposal>,
 }
 
-impl openaevc_execution::Harness for ScriptedHarness {
+impl openaevc::execution::Harness for ScriptedHarness {
     fn id(&self) -> &str {
         HARNESS
     }
@@ -748,7 +748,7 @@ impl openaevc_execution::Harness for ScriptedHarness {
         &mut self,
         _kind: &str,
         _spec: Option<&Value>,
-        session: &mut dyn openaevc_execution::ExecutionSession,
+        session: &mut dyn openaevc::execution::ExecutionSession,
     ) -> Result<(), String> {
         for e in self.effects.clone() {
             let key = e.target.locator.clone();

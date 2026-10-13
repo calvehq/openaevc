@@ -1,6 +1,6 @@
 # OpenAEVC Go SDK
 
-`go get github.com/calvehq/OpenAEVC/sdk/go` — standard library only (Go ≥ 1.22), protocol 0.1.0.
+`go get github.com/calvehq/openaevc/sdk/go` — standard library only (Go ≥ 1.22), protocol 0.1.0.
 
 ```go
 key, _ := openaevc.KeyFromHex(seed)

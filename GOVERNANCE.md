@@ -8,7 +8,7 @@
 
 ## Review requirements
 
-- One maintainer approval for any change; a CODEOWNER approval for `spec/`, `schemas/`, `crates/openaevc-protocol`, `crates/openaevc-canonical`, `crates/openaevc-crypto`, `crates/openaevc-authority`, `crates/openaevc-runtime` and `crates/openaevc-store`.
+- One maintainer approval for any change; a CODEOWNER approval for `spec/`, `schemas/`, `crates/openaevc/src/protocol`, `crates/openaevc/src/canonical`, `crates/openaevc/src/crypto`, `crates/openaevc/src/authority`, `crates/openaevc/src/runtime` and `crates/openaevc/src/store`.
 - All required CI checks green, no unresolved conversations. History is squash-merged.
 
 ## Release authority

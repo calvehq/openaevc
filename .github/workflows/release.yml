@@ -1,5 +1,5 @@
 name: release
-# Builds, verifies, signs and packages a release, then publishes to crates.io, npm and PyPI.
+# Builds, verifies, signs and packages a release, then publishes `openaevc` to crates.io, npm and PyPI.
 # Publication runs only for a `v*` tag and only after the signed artifacts are assembled.
 on:
   push:
@@ -37,6 +37,7 @@ jobs:
           python3 tooling/release-check/check.py --markers
           python3 tooling/release-check/coverage.py
       - run: cargo test --workspace --all-features --locked
+      - run: cargo publish -p openaevc --locked --dry-run
       # Scenario K: the release daemon from a clean data root passes FULL conformance remotely,
       # including real restart recovery; the reports are release evidence.
       - run: cargo test --release --locked -p openaevcd --test scenario_k -- --nocapture
@@ -147,7 +148,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
-      - run: cargo publish --workspace --locked
+      # `openaevc` is the only crate published to crates.io; every other package is publish = false.
+      - run: cargo publish -p openaevc --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - uses: actions/setup-node@v4

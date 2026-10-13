@@ -10,10 +10,6 @@ publish = false
 workspace = true
 
 [dependencies]
-openaevc-protocol.workspace = true
-openaevc-canonical.workspace = true
-openaevc-crypto.workspace = true
-openaevc-core.workspace = true
-openaevc-authority.workspace = true
+openaevc.workspace = true
 serde.workspace = true
 serde_json.workspace = true

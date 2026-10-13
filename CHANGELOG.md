@@ -18,7 +18,8 @@ Protocol 0.1.0, extension contract 0.1.0, conformance suite 0.1.0, data root sch
 - SDKs for Rust, TypeScript, Python and Go.
 - Conformance suite: CORE, AUTHORITY, RUNTIME, EXTENSION_HOST and FULL profiles; in-process, remote and extension targets; JSON and JUnit reports.
 - `openaevcd gc` for offline removal of unindexed bytes.
-- Release workflow publishes to crates.io, npm (with provenance) and PyPI (trusted publishing) on a `v*` tag.
+- One public Rust crate, `openaevc`, with modules `protocol`, `canonical`, `crypto`, `core`, `authority`, `policy`, `extension`, `execution`, `verification`, `composition`, `store`, `runtime` and `transport`. The default build is the protocol layer; features `store`, `runtime`, `transport` and `full` add the heavy stacks. The Rust SDK (`openaevc-sdk`), conformance suite, binaries and reference extensions are not published to crates.io.
+- Release workflow publishes `openaevc` to crates.io, npm (with provenance) and PyPI (trusted publishing) on a `v*` tag.
 
 ### Release-candidate audit
 

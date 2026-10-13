@@ -4,11 +4,11 @@
 use std::path::Path;
 use std::time::Instant;
 
-use openaevc_extension_contract::host::{
+use openaevc::extension::host::{
     self, CallError, Entrypoint, HostCallHandler, HostError, HostLimits,
 };
-use openaevc_extension_contract::wire::{HostCall, Operation, WireError};
-use openaevc_protocol::*;
+use openaevc::extension::wire::{HostCall, Operation, WireError};
+use openaevc::protocol::*;
 use serde_json::Value;
 
 use crate::{CaseOutcome, Profile, Report, Status};
@@ -66,7 +66,7 @@ pub fn check(path: &Path) -> Report {
         (None, _) => Err("no manifest".into()),
         (_, Err(e)) => Err(format!("cannot read executable: {e}")),
         (Some(m), Ok(bytes)) => {
-            let actual = openaevc_crypto::sha256(&bytes);
+            let actual = openaevc::crypto::sha256(&bytes);
             if m.artifact_digest != actual {
                 Err(format!(
                     "manifest artifact_digest {} != executable digest {actual}",

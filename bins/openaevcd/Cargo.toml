@@ -6,17 +6,13 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+publish = false
 
 [lints]
 workspace = true
 
 [dependencies]
-openaevc-protocol.workspace = true
-openaevc-core.workspace = true
-openaevc-crypto.workspace = true
-openaevc-store.workspace = true
-openaevc-runtime.workspace = true
-openaevc-transport.workspace = true
+openaevc = { workspace = true, features = ["transport"] }
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true
@@ -30,8 +26,6 @@ tokio-rustls.workspace = true
 
 [dev-dependencies]
 openaevc-conformance.workspace = true
-openaevc-crypto.workspace = true
 tempfile.workspace = true
 openaevc-testkit.workspace = true
 openaevc-sdk.workspace = true
-openaevc-transport.workspace = true

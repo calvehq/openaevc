@@ -1,7 +1,7 @@
 //! EXTENSION_HOST profile, exercised through the runtime with the `conformance-fixture-<mode>`
 //! executables (installed in the extension directory the target is configured with).
 
-use openaevc_protocol::*;
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::json;
 
@@ -19,7 +19,7 @@ async fn register(cx: &Ctx, ns: &Ns, name: &str) -> Result<Digest, String> {
     ns.root
         .register_extension(
             name,
-            openaevc_crypto::sha256(&bytes),
+            openaevc::crypto::sha256(&bytes),
             vec![HostCapability::ResourceRead],
         )
         .await
@@ -62,7 +62,7 @@ pub async fn confinement(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let name = fixture("well-behaved");
     let bytes = std::fs::read(cx.extensions()?.join(&name)).map_err(|e| format!("SKIP: {e}"))?;
-    let d = openaevc_crypto::sha256(&bytes);
+    let d = openaevc::crypto::sha256(&bytes);
     for bad in [
         format!("../{name}"),
         "/bin/sh".into(),
@@ -97,7 +97,7 @@ pub async fn pinning(cx: &Ctx) -> CaseResult {
     let name = fixture("well-behaved");
     expect_code(
         ns.root
-            .register_extension(&name, openaevc_crypto::sha256(b"other"), vec![])
+            .register_extension(&name, openaevc::crypto::sha256(b"other"), vec![])
             .await,
         ErrorCode::ExtensionIncompatible,
     )?;
@@ -107,7 +107,7 @@ pub async fn pinning(cx: &Ctx) -> CaseResult {
             std::fs::read(cx.extensions()?.join(&name)).map_err(|e| format!("SKIP: {e}"))?;
         expect_code(
             ns.root
-                .register_extension(&name, openaevc_crypto::sha256(&bytes), vec![])
+                .register_extension(&name, openaevc::crypto::sha256(&bytes), vec![])
                 .await,
             ErrorCode::ExtensionIncompatible,
         )
@@ -121,7 +121,7 @@ pub async fn kinds(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let name = exe_name("openaevc-ext-reference-null");
     let bytes = std::fs::read(cx.extensions()?.join(&name)).map_err(|e| format!("SKIP: {e}"))?;
-    let d = openaevc_crypto::sha256(&bytes);
+    let d = openaevc::crypto::sha256(&bytes);
     let first = ns
         .root
         .register_extension(
@@ -328,7 +328,7 @@ pub async fn kind_conflicts(cx: &Ctx) -> CaseResult {
         .map_err(|e| format!("SKIP: fixture {thief} not installed: {e}"))?;
     expect_code(
         ns.root
-            .register_extension(&thief, openaevc_crypto::sha256(&bytes), vec![])
+            .register_extension(&thief, openaevc::crypto::sha256(&bytes), vec![])
             .await,
         ErrorCode::Conflict,
     )
@@ -415,7 +415,7 @@ pub async fn unsupported_capabilities(cx: &Ctx) -> CaseResult {
         HostCapability::SecretRead,
     ];
     ns.root
-        .register_extension(&name, openaevc_crypto::sha256(&bytes), all)
+        .register_extension(&name, openaevc::crypto::sha256(&bytes), all)
         .await
         .c()?;
     let events = cx.events(&ns.root).await?;

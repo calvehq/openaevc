@@ -1,6 +1,6 @@
 //! Runs every example flow so the examples stay correct.
 
-use openaevc_protocol::ErrorCode;
+use openaevc::protocol::ErrorCode;
 use openaevc_testkit::Extensions;
 
 fn rt() -> tokio::runtime::Runtime {

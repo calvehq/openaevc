@@ -2,10 +2,10 @@
 *                               @Shiva936
 /spec/                          @Shiva936
 /schemas/                       @Shiva936
-/crates/openaevc-protocol/      @Shiva936
-/crates/openaevc-canonical/     @Shiva936
-/crates/openaevc-crypto/        @Shiva936
-/crates/openaevc-authority/     @Shiva936
-/crates/openaevc-runtime/       @Shiva936
-/crates/openaevc-store/         @Shiva936
+/crates/openaevc/src/protocol/  @Shiva936
+/crates/openaevc/src/canonical/ @Shiva936
+/crates/openaevc/src/crypto/    @Shiva936
+/crates/openaevc/src/authority/ @Shiva936
+/crates/openaevc/src/runtime/   @Shiva936
+/crates/openaevc/src/store/     @Shiva936
 /.github/workflows/             @Shiva936

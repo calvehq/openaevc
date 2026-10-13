@@ -12,12 +12,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use openaevc_core::{IdGeneratorExt, SystemClock, UuidV7Ids};
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::PrincipalId;
-use openaevc_runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
-use openaevc_store::{Durability, SqliteOptions, SqliteStore};
-use openaevc_transport::server::{self, Health, Listener, ServerConfig};
+use openaevc::core::{IdGeneratorExt, SystemClock, UuidV7Ids};
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::PrincipalId;
+use openaevc::runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::store::{Durability, SqliteOptions, SqliteStore};
+use openaevc::transport::server::{self, Health, Listener, ServerConfig};
 use tokio::sync::watch;
 
 use crate::config::{AdminEntry, Config};

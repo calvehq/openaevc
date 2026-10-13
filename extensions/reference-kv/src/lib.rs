@@ -18,10 +18,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-pub use openaevc_extension_contract::wire::{
+pub use openaevc::extension::wire::{
     ComposeMember, ComposeOutput, CompositionConflict, EvaluateOutput, VerifyOutput,
 };
-use openaevc_protocol::{
+use openaevc::protocol::{
     AppliedEffect, CompositionEdge, CompositionEdgeKind, Digest, EffectProposal, EvaluationVerdict,
     FactValue, Facts, Finding, ResourceRef, VerificationStatus,
 };
@@ -243,7 +243,7 @@ pub fn compose(members: &[ComposeMember], edges: &[CompositionEdge]) -> ComposeO
 #[cfg(test)]
 mod tests {
     use super::*;
-    use openaevc_protocol::Provenance;
+    use openaevc::protocol::Provenance;
     use serde_json::json;
 
     fn eff(

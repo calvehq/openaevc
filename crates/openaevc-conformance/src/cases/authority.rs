@@ -1,8 +1,8 @@
 //! AUTHORITY profile: authentication, default deny, capabilities, delegation, revocation,
 //! replay protection, Namespace isolation.
 
-use openaevc_crypto::SigningKey;
-use openaevc_protocol::*;
+use openaevc::crypto::SigningKey;
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -135,7 +135,7 @@ fn command_samples(
     subject: PrincipalId,
     issuer: &SigningKey,
 ) -> Vec<Command> {
-    let d = openaevc_crypto::sha256(b"conformance");
+    let d = openaevc::crypto::sha256(b"conformance");
     let pack = PackId::Change(fresh());
     let (exe, lease, wu): (ExecutionId, LeaseId, WorkUnitId) = (fresh(), fresh(), fresh());
     let doc: PolicyDocument = serde_json::from_value(
@@ -146,7 +146,7 @@ fn command_samples(
         description: None,
         rules: vec![],
     });
-    let grant = openaevc_authority::sign_grant(
+    let grant = openaevc::authority::sign_grant(
         cx.grant_body(ns, subject, subject, &["*"], None, 0),
         issuer,
     )
@@ -326,7 +326,7 @@ fn command_samples(
 }
 
 fn query_samples(subject: PrincipalId) -> Vec<Query> {
-    let d = openaevc_crypto::sha256(b"conformance");
+    let d = openaevc::crypto::sha256(b"conformance");
     let pack = PackId::Change(fresh());
     vec![
         Query::GetRuntimeInfo {},
@@ -584,7 +584,7 @@ pub async fn grant_validity(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let m = cx.member(&ns).await?;
     // Forged: signed by someone other than the issuer.
-    let forged = openaevc_authority::sign_grant(
+    let forged = openaevc::authority::sign_grant(
         cx.grant_body(ns.id, ns.root_id, m.id, &["*"], None, 0),
         m.key.as_ref(),
     )
@@ -596,7 +596,7 @@ pub async fn grant_validity(cx: &Ctx) -> CaseResult {
         ErrorCode::Unauthorized,
     )?;
     // Tampered after signing.
-    let mut g = openaevc_authority::sign_grant(
+    let mut g = openaevc::authority::sign_grant(
         cx.grant_body(ns.id, ns.root_id, m.id, &["namespace.read"], None, 0),
         ns.root_key.as_ref(),
     )
@@ -690,7 +690,7 @@ pub async fn issuer_submits(cx: &Ctx) -> CaseResult {
     let ns = cx.namespace().await?;
     let alice = cx.member(&ns).await?;
     cx.grant(&ns, alice.id, &["grant.issue"]).await?;
-    let root_signed = openaevc_authority::sign_grant(
+    let root_signed = openaevc::authority::sign_grant(
         cx.grant_body(ns.id, ns.root_id, alice.id, &["*"], None, 0),
         ns.root_key.as_ref(),
     )

@@ -8,7 +8,7 @@
 //! The handwritten SDK layers build on these. With `--check`, fails on any difference.
 
 use generate_schemas::{json_schema, root};
-use openaevc_protocol::{
+use openaevc::protocol::{
     Command, ErrorCode, ObjectKind, Query, CONTRACT_VERSION, PROTOCOL_VERSION,
 };
 use serde_json::Value;
@@ -116,7 +116,7 @@ fn constants() -> Constants {
         queries: list(Query::NAMES, |s| s.to_string()),
         errors: list(ErrorCode::ALL, |c| c.as_str().to_string()),
         kinds: list(ObjectKind::ALL, |k| k.as_str().to_string()),
-        prefixes: list(openaevc_protocol::AnyId::PREFIXES, |s| s.to_string()),
+        prefixes: list(openaevc::protocol::AnyId::PREFIXES, |s| s.to_string()),
     }
 }
 

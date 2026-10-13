@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use openaevc_protocol::*;
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::json;
 

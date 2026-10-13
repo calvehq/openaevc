@@ -5,11 +5,9 @@
 
 use std::collections::BTreeMap;
 
-use openaevc_extension_contract::server::{self_artifact_digest, serve, Extension, HostContext};
-use openaevc_extension_contract::wire::{
-    ApplyOutput, Operation, ValidateOutput, VerifyOutput, WireError,
-};
-use openaevc_protocol::*;
+use openaevc::extension::server::{self_artifact_digest, serve, Extension, HostContext};
+use openaevc::extension::wire::{ApplyOutput, Operation, ValidateOutput, VerifyOutput, WireError};
+use openaevc::protocol::*;
 use serde_json::{json, Value};
 
 const ID: &str = "org.example.counter";

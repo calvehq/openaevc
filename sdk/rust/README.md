@@ -15,3 +15,5 @@ let candidate = c.seal(pack, 1).await?;
 `OpenAevcClient` has four primitives (`command`, `query`, `subscribe`, `get_object`); `TypedClient` adds typed helpers for common flows. `get_object` verifies digests and signatures before returning. Endpoints: TCP (`RemoteEndpoint::Tcp("127.0.0.1:7878".into())`), TLS and Unix sockets.
 
 See `docs/sdk/README.md` and `examples/`. Tests: `cargo test -p openaevc-sdk`.
+
+Not published to crates.io yet (`publish = false`). It depends only on the public API of the `openaevc` crate (feature `transport`: the embedded runtime plus the HTTP client), so it can move to its own repository unchanged.

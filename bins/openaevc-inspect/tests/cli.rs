@@ -110,13 +110,13 @@ fn compatibility_against_a_live_daemon() {
         let addr = l.local_addr().unwrap().to_string();
         let (stop, rx) = tokio::sync::watch::channel(false);
         std::mem::forget(stop);
-        let app = openaevc_transport::server::router(
+        let app = openaevc::transport::server::router(
             h.rt.clone(),
             Default::default(),
-            std::sync::Arc::new(openaevc_transport::server::Health::ready()),
+            std::sync::Arc::new(openaevc::transport::server::Health::ready()),
         );
-        tokio::spawn(openaevc_transport::server::serve(
-            openaevc_transport::server::Listener::Tcp(l),
+        tokio::spawn(openaevc::transport::server::serve(
+            openaevc::transport::server::Listener::Tcp(l),
             app,
             rx,
         ));

@@ -24,6 +24,6 @@ Normative changes follow `GOVERNANCE.md` Â§Protocol change process: issue/RFC â†
 
 ## Architecture rules
 
-`tooling/release-check/check.py` enforces the crate layering in `docs/architecture/crates.md`. Project-owned crates use `#![forbid(unsafe_code)]`; an exception needs an ADR, a dedicated crate, a safety-invariant document and CODEOWNERS approval.
+`tooling/release-check/check.py` enforces the module layering of the `openaevc` crate (table in `crates/openaevc/src/lib.rs`) and its feature gates. Project-owned crates use `#![forbid(unsafe_code)]`; an exception needs an ADR, a dedicated crate, a safety-invariant document and CODEOWNERS approval.
 
 Keep pull requests small enough that reviewers can verify invariants.

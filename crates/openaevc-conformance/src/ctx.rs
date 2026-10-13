@@ -4,9 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use openaevc_core::request::sign_request;
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::*;
+use openaevc::core::request::sign_request;
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::{json, Value};
 
@@ -217,9 +217,9 @@ impl Ctx {
             v["namespace"] = json!(ns);
         }
         edit(&mut v);
-        if let Ok(bytes) = openaevc_canonical::encode(&v) {
+        if let Ok(bytes) = openaevc::canonical::encode(&v) {
             v["signature"] = json!(key
-                .sign(openaevc_crypto::Domain::Request, &bytes)
+                .sign(openaevc::crypto::Domain::Request, &bytes)
                 .to_string());
         }
         v
@@ -258,7 +258,7 @@ impl Ctx {
         ns.root
             .register_extension(
                 &name,
-                openaevc_crypto::sha256(&bytes),
+                openaevc::crypto::sha256(&bytes),
                 vec![HostCapability::ResourceRead],
             )
             .await
@@ -400,9 +400,9 @@ pub fn provider(principal: PrincipalId, resumable: bool) -> ProviderDescriptor {
 }
 
 /// A fresh typed identifier.
-pub fn fresh<T: openaevc_core::FromUuid>() -> T {
-    use openaevc_core::IdGeneratorExt;
-    openaevc_core::UuidV7Ids::new(Arc::new(openaevc_core::SystemClock)).next()
+pub fn fresh<T: openaevc::core::FromUuid>() -> T {
+    use openaevc::core::IdGeneratorExt;
+    openaevc::core::UuidV7Ids::new(Arc::new(openaevc::core::SystemClock)).next()
 }
 
 pub fn fixtures(name: &str) -> Result<Value, String> {

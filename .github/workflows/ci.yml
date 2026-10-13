@@ -17,6 +17,15 @@ jobs:
       - run: rustup show            # installs the toolchain pinned in rust-toolchain.toml
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # `openaevc` alone (no other member's features unify in): the library under every
+      # feature set, then its own tests, then the minimal default build.
+      - name: Feature matrix
+        run: |
+          for f in "" store fault-injection runtime transport full; do
+            cargo clippy -p openaevc --no-default-features --features "$f" --lib --locked -- -D warnings
+            cargo clippy -p openaevc --no-default-features --features "$f" --all-targets --locked -- -D warnings
+          done
+          cargo build -p openaevc --locked
       - run: python3 -m unittest discover -s tooling/release-check -p 'test_*.py'
       - run: python3 tooling/release-check/check.py --markers
       - name: Requirement coverage
@@ -46,6 +55,7 @@ jobs:
       - run: cargo build --workspace --locked
       # Includes the conformance suite: the reference runtime must pass FULL in-process.
       - run: cargo test --workspace --locked
+      - run: cargo test -p openaevc --all-features --locked
 
   sdk:
     runs-on: ubuntu-latest

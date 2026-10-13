@@ -2,11 +2,11 @@
 //! emits deterministic evidence. Used for protocol smoke tests.
 #![forbid(unsafe_code)]
 
-use openaevc_extension_contract::server::{self_artifact_digest, serve, Extension, HostContext};
-use openaevc_extension_contract::wire::{
+use openaevc::extension::server::{self_artifact_digest, serve, Extension, HostContext};
+use openaevc::extension::wire::{
     ApplyOutput, HostCall, Operation, ValidateOutput, VerifyOutput, WireError,
 };
-use openaevc_protocol::*;
+use openaevc::protocol::*;
 use serde_json::{json, Value};
 
 pub const ID: &str = "org.openaevc.reference.null";

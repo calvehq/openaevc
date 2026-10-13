@@ -5,10 +5,10 @@
 
 use std::sync::Arc;
 
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::*;
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::*;
+use openaevc::transport::client::Endpoint;
 use openaevc_sdk::{RemoteClient, Session, TypedClient};
-use openaevc_transport::client::Endpoint;
 
 #[tokio::main]
 async fn main() -> openaevc_examples::Result<()> {

@@ -12,14 +12,16 @@ publish = false
 workspace = true
 
 [dependencies]
-openaevc-protocol.workspace = true
-openaevc-canonical.workspace = true
-openaevc-crypto.workspace = true
-openaevc-core.workspace = true
-openaevc-authority.workspace = true
-openaevc-store.workspace = true
-openaevc-runtime.workspace = true
-openaevc-execution.workspace = true
+openaevc = { workspace = true, features = ["runtime"] }
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+
+# The runtime and transport integration tests live here: they need this crate, and keeping
+# them out of `openaevc` keeps every local package out of the published crate's manifest.
+[dev-dependencies]
+openaevc = { workspace = true, features = ["full", "fault-injection"] }
+rcgen.workspace = true
+rustls.workspace = true
+rustls-pki-types.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
