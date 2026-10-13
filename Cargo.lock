@@ -390,11 +390,7 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 name = "fixture-builder"
 version = "0.1.0"
 dependencies = [
- "openaevc-authority",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
+ "openaevc",
  "serde",
  "serde_json",
 ]
@@ -454,8 +450,7 @@ dependencies = [
 name = "generate-schemas"
 version = "0.1.0"
 dependencies = [
- "openaevc-protocol",
- "openaevc-transport",
+ "openaevc",
  "schemars",
  "serde_json",
 ]
@@ -465,7 +460,7 @@ name = "generate-sdks"
 version = "0.1.0"
 dependencies = [
  "generate-schemas",
- "openaevc-protocol",
+ "openaevc",
  "serde_json",
 ]
 
@@ -776,37 +771,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "openaevc-authority"
+name = "openaevc"
 version = "0.1.0"
 dependencies = [
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
+ "axum",
+ "base64",
+ "ed25519-dalek",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "proptest",
- "serde_json",
-]
-
-[[package]]
-name = "openaevc-canonical"
-version = "0.1.0"
-dependencies = [
- "openaevc-protocol",
- "proptest",
+ "rand_core 0.6.4",
+ "rusqlite",
+ "rustls",
+ "rustls-pki-types",
+ "schemars",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror",
-]
-
-[[package]]
-name = "openaevc-composition"
-version = "0.1.0"
-dependencies = [
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "proptest",
- "serde",
+ "tokio",
+ "tokio-rustls",
+ "tokio-stream",
+ "tower",
+ "tracing",
 ]
 
 [[package]]
@@ -814,17 +803,9 @@ name = "openaevc-conformance"
 version = "0.1.0"
 dependencies = [
  "axum",
- "openaevc-authority",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-extension-contract",
- "openaevc-protocol",
- "openaevc-runtime",
+ "openaevc",
  "openaevc-sdk",
- "openaevc-store",
  "openaevc-testkit",
- "openaevc-transport",
  "serde",
  "serde_json",
  "tempfile",
@@ -836,53 +817,19 @@ name = "openaevc-conformance-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "openaevc",
  "openaevc-conformance",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-transport",
  "serde_json",
  "tokio",
-]
-
-[[package]]
-name = "openaevc-core"
-version = "0.1.0"
-dependencies = [
- "openaevc-canonical",
- "openaevc-crypto",
- "openaevc-protocol",
- "proptest",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "openaevc-crypto"
-version = "0.1.0"
-dependencies = [
- "ed25519-dalek",
- "openaevc-canonical",
- "openaevc-protocol",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]
 name = "openaevc-examples"
 version = "0.1.0"
 dependencies = [
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-extension-contract",
- "openaevc-protocol",
- "openaevc-runtime",
+ "openaevc",
  "openaevc-sdk",
- "openaevc-store",
  "openaevc-testkit",
- "openaevc-transport",
  "serde",
  "serde_json",
  "tempfile",
@@ -890,22 +837,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "openaevc-execution"
-version = "0.1.0"
-dependencies = [
- "openaevc-authority",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "serde_json",
-]
-
-[[package]]
 name = "openaevc-ext-conformance-fixtures"
 version = "0.1.0"
 dependencies = [
- "openaevc-extension-contract",
- "openaevc-protocol",
+ "openaevc",
  "serde",
  "serde_json",
 ]
@@ -914,8 +849,7 @@ dependencies = [
 name = "openaevc-ext-reference-kv"
 version = "0.1.0"
 dependencies = [
- "openaevc-extension-contract",
- "openaevc-protocol",
+ "openaevc",
  "serde",
  "serde_json",
 ]
@@ -924,20 +858,7 @@ dependencies = [
 name = "openaevc-ext-reference-null"
 version = "0.1.0"
 dependencies = [
- "openaevc-extension-contract",
- "openaevc-protocol",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "openaevc-extension-contract"
-version = "0.1.0"
-dependencies = [
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
+ "openaevc",
  "serde",
  "serde_json",
 ]
@@ -947,57 +868,8 @@ name = "openaevc-inspect"
 version = "0.1.0"
 dependencies = [
  "clap",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-store",
+ "openaevc",
  "openaevc-testkit",
- "openaevc-transport",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "openaevc-policy"
-version = "0.1.0"
-dependencies = [
- "openaevc-core",
- "openaevc-protocol",
- "proptest",
- "serde_json",
-]
-
-[[package]]
-name = "openaevc-protocol"
-version = "0.1.0"
-dependencies = [
- "base64",
- "openaevc-canonical",
- "schemars",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "openaevc-runtime"
-version = "0.1.0"
-dependencies = [
- "openaevc-authority",
- "openaevc-canonical",
- "openaevc-composition",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-execution",
- "openaevc-extension-contract",
- "openaevc-policy",
- "openaevc-protocol",
- "openaevc-store",
- "openaevc-testkit",
- "openaevc-verification",
- "serde",
  "serde_json",
  "tempfile",
  "tokio",
@@ -1007,65 +879,18 @@ dependencies = [
 name = "openaevc-sdk"
 version = "0.1.0"
 dependencies = [
- "openaevc-authority",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-runtime",
+ "openaevc",
  "openaevc-testkit",
- "openaevc-transport",
  "serde",
  "serde_json",
  "tokio",
 ]
 
 [[package]]
-name = "openaevc-store"
-version = "0.1.0"
-dependencies = [
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-store",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "openaevc-testkit"
 version = "0.1.0"
 dependencies = [
- "openaevc-authority",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-execution",
- "openaevc-protocol",
- "openaevc-runtime",
- "openaevc-store",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "openaevc-transport"
-version = "0.1.0"
-dependencies = [
- "axum",
- "http-body-util",
- "hyper",
- "hyper-util",
- "openaevc-canonical",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-runtime",
- "openaevc-testkit",
+ "openaevc",
  "rcgen",
  "rustls",
  "rustls-pki-types",
@@ -1073,20 +898,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "tokio-rustls",
- "tokio-stream",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "openaevc-verification"
-version = "0.1.0"
-dependencies = [
- "openaevc-core",
- "openaevc-policy",
- "openaevc-protocol",
- "serde",
 ]
 
 [[package]]
@@ -1094,15 +905,10 @@ name = "openaevcd"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "openaevc",
  "openaevc-conformance",
- "openaevc-core",
- "openaevc-crypto",
- "openaevc-protocol",
- "openaevc-runtime",
  "openaevc-sdk",
- "openaevc-store",
  "openaevc-testkit",
- "openaevc-transport",
  "rustls",
  "rustls-pki-types",
  "serde",

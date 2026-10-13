@@ -10,7 +10,6 @@ publish = false
 workspace = true
 
 [dependencies]
-openaevc-protocol.workspace = true
+openaevc = { workspace = true, features = ["transport"] }
 schemars.workspace = true
-openaevc-transport.workspace = true
 serde_json.workspace = true

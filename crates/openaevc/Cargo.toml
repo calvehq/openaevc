@@ -1,0 +1,82 @@
+[package]
+name = "openaevc"
+description = "OpenAEVC: protocol types, canonical encoding, crypto, authority, policy, execution, verification, composition, the extension contract, and the reference store, runtime and HTTP transport."
+readme = "README.md"
+keywords = ["openaevc", "protocol", "cbor", "runtime", "capabilities"]
+categories = ["encoding", "cryptography", "network-programming"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true
+
+# The default build is the protocol layer: no async runtime, storage engine or HTTP stack.
+# Each feature enables exactly the modules (and third-party stacks) it names, plus what they
+# depend on in the layer graph.
+[features]
+default = []
+# `openaevc::store`: store traits, in-memory backend, SQLite + filesystem CAS backend.
+store = ["dep:rusqlite"]
+# Deterministic crash injection and tamper hooks between commit stages. Tests only: hidden
+# methods on `SqliteStore`, unreachable through the protocol surface.
+fault-injection = ["store"]
+# `openaevc::runtime`: the reference runtime (sole authoritative mutation boundary).
+runtime = ["store", "dep:tokio"]
+# `openaevc::transport`: HTTP server and client, SSE events, TLS.
+transport = [
+    "runtime",
+    "tokio/rt-multi-thread",
+    "tokio/net",
+    "tokio/macros",
+    "tokio/time",
+    "tokio/io-util",
+    "dep:tokio-stream",
+    "dep:axum",
+    "dep:hyper",
+    "dep:hyper-util",
+    "dep:http-body-util",
+    "dep:tower",
+    "dep:rustls",
+    "dep:tokio-rustls",
+    "dep:rustls-pki-types",
+    "dep:tracing",
+]
+# Every module.
+full = ["transport"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+base64.workspace = true
+schemars.workspace = true
+sha2.workspace = true
+ed25519-dalek.workspace = true
+rand_core.workspace = true
+rusqlite = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tokio-stream = { version = "0.1", features = ["sync"], optional = true }
+axum = { workspace = true, optional = true }
+hyper = { workspace = true, optional = true }
+hyper-util = { workspace = true, optional = true }
+http-body-util = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
+tokio-rustls = { workspace = true, optional = true }
+rustls-pki-types = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
+
+[[test]]
+name = "storage"
+required-features = ["store", "fault-injection"]

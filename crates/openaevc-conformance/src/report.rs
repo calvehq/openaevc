@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use openaevc_protocol::{RuntimeInfo, PROTOCOL_VERSION};
+use openaevc::protocol::{RuntimeInfo, PROTOCOL_VERSION};
 use serde::Serialize;
 
 use crate::{Profile, CONFORMANCE_VERSION};

@@ -24,7 +24,7 @@ envelope ─► protocol version ─► signature (domain "request") ─► call
         ─► handler (Tx overlay) ─► one atomic WriteBatch ─► signed receipt + events
 ```
 
-Every entry point — embedded `Runtime::execute`, HTTP, object upload, subscriptions — passes the same path (`openaevc-runtime`). Denials are audited as events. Authority is the caller's capability grants, checked for the exact action, Namespace and resource scope (`openaevc-authority`).
+Every entry point — embedded `Runtime::execute`, HTTP, object upload, subscriptions — passes the same path (`openaevc::runtime`). Denials are audited as events. Authority is the caller's capability grants, checked for the exact action, Namespace and resource scope (`openaevc::authority`).
 
 ## Execution
 
@@ -49,7 +49,7 @@ runtime ──spawn (cleared env, cwd = extension dir)──► extension proces
         ◄─result | error ────────────────────────────  (frames: u32 length + canonical CBOR)
 ```
 
-One process per invocation, killed on deadline, oversize or malformed frames (`openaevc-extension-contract`).
+One process per invocation, killed on deadline, oversize or malformed frames (`openaevc::extension`).
 
 ## Verification and evaluation
 
@@ -82,7 +82,7 @@ members (promoted digests) + caller edges (ORDERS_AFTER)
   ─► canonical graph (sorted members/edges, graph_digest, heads) ─► Baseline object
 ```
 
-Baselines are immutable; a new composition is a new Baseline (`openaevc-composition`).
+Baselines are immutable; a new composition is a new Baseline (`openaevc::composition`).
 
 ## Recovery
 

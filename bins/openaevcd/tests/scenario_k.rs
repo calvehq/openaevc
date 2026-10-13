@@ -7,12 +7,12 @@
 use std::process::Command;
 use std::sync::Arc;
 
+use openaevc::crypto::SigningKey;
+use openaevc::protocol::PrincipalId;
+use openaevc::transport::client::Endpoint;
 use openaevc_conformance::lifecycle::ReferenceDaemon;
 use openaevc_conformance::{run, Profile, Target};
-use openaevc_crypto::SigningKey;
-use openaevc_protocol::PrincipalId;
 use openaevc_testkit::Extensions;
-use openaevc_transport::client::Endpoint;
 
 const BIN: &str = env!("CARGO_BIN_EXE_openaevcd");
 

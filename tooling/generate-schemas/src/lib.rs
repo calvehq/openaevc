@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use openaevc_protocol as p;
+use openaevc::protocol as p;
 use schemars::generate::SchemaSettings;
 use serde_json::{json, Value};
 

@@ -8,11 +8,11 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use openaevc_crypto::SigningKey;
-use openaevc_protocol::*;
+use openaevc::crypto::SigningKey;
+use openaevc::protocol::*;
+use openaevc::transport::client::Endpoint;
 use openaevc_sdk::{OpenAevcClient, RemoteClient, Session, TypedClient};
 use openaevc_testkit::Extensions;
-use openaevc_transport::client::Endpoint;
 use serde_json::json;
 
 const BIN: &str = env!("CARGO_BIN_EXE_openaevcd");
@@ -133,7 +133,7 @@ async fn rust_flow(addr: &str, admin: &Path, kv: &str, kv_digest: Digest) {
     .await
     .unwrap();
     let root = Arc::new(SigningKey::generate());
-    use openaevc_crypto::Signer;
+    use openaevc::crypto::Signer;
     let (ns, roots) = ac
         .create_namespace(vec![NewPrincipal {
             kind: PrincipalKind::Key,
@@ -147,7 +147,7 @@ async fn rust_flow(addr: &str, admin: &Path, kv: &str, kv_digest: Digest) {
     c.register_extension(kv, kv_digest, vec![HostCapability::ResourceRead])
         .await
         .unwrap();
-    c.command(openaevc_protocol::Command::RegisterProvider {
+    c.command(openaevc::protocol::Command::RegisterProvider {
         provider: openaevc_testkit::provider_descriptor(roots[0], false),
     })
     .await

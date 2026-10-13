@@ -16,7 +16,7 @@ fn main() {
         ("schemas/cddl/openaevc.cddl", cddl(&schema)),
         (
             "schemas/openapi/openapi.json",
-            serde_json::to_string_pretty(&openaevc_transport::openapi::document()).unwrap() + "\n",
+            serde_json::to_string_pretty(&openaevc::transport::openapi::document()).unwrap() + "\n",
         ),
     ];
     let mut stale = false;

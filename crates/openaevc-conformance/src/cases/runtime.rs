@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use openaevc_protocol::*;
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::json;
 
@@ -715,7 +715,7 @@ pub async fn evidence(cx: &Ctx) -> CaseResult {
         media_type: "text/plain".into(),
         data: b"conformance".to_vec(),
     };
-    let bogus = openaevc_crypto::sha256(b"not-a-candidate");
+    let bogus = openaevc::crypto::sha256(b"not-a-candidate");
     expect_code(
         ns.root
             .command(Command::RegisterEvidence {
@@ -1105,7 +1105,7 @@ pub async fn revisions(cx: &Ctx) -> CaseResult {
         ns.root
             .command(Command::CreateRevisionPack {
                 relation: RevisionRelation::Reverts,
-                targets: vec![openaevc_crypto::sha256(b"x")],
+                targets: vec![openaevc::crypto::sha256(b"x")],
                 spec: PackSpec::default(),
             })
             .await,
@@ -1171,7 +1171,7 @@ pub async fn baselines(cx: &Ctx) -> CaseResult {
     ensure(d1 != d2, "each Baseline is a new object")?;
     expect_code(
         ns.root
-            .create_baseline(vec![openaevc_crypto::sha256(b"none")], vec![])
+            .create_baseline(vec![openaevc::crypto::sha256(b"none")], vec![])
             .await,
         ErrorCode::NotFound,
     )?;
@@ -1374,7 +1374,7 @@ pub async fn events(cx: &Ctx) -> CaseResult {
             .all(|(i, e)| e.sequence == i as u64 + 1),
         "sequences start at 1 without gaps",
     )?;
-    openaevc_core::events::verify_chain(&events, 0, Digest::ZERO)
+    openaevc::core::events::verify_chain(&events, 0, Digest::ZERO)
         .map_err(|e| format!("hash chain: {}", e.message))?;
     // Checkpoints.
     let interval = cx.target.checkpoint_interval();
@@ -1441,7 +1441,7 @@ pub async fn transport(cx: &Ctx) -> CaseResult {
     // Payload bytes must match the signed digest.
     let (_, promoted) = cx.promote_empty(&ns.root).await?;
     let bytes = ns.root.get_object(promoted).await.c()?.bytes().to_vec();
-    let wrong = openaevc_crypto::sha256(b"other");
+    let wrong = openaevc::crypto::sha256(b"other");
     let env = cx.envelope_value(
         &ns.root_key,
         ns.root_id,
@@ -1475,7 +1475,7 @@ pub async fn transport(cx: &Ctx) -> CaseResult {
     ensure(e.subjects.contains(&pack.to_string()), "subject filter")?;
     // Remote listeners on non-loopback addresses must use TLS.
     if let crate::target::Target::Remote(r) = &cx.target {
-        if let openaevc_transport::client::Endpoint::Tcp(addr) = &r.endpoint {
+        if let openaevc::transport::client::Endpoint::Tcp(addr) = &r.endpoint {
             let ip: Option<std::net::IpAddr> = addr
                 .rsplit_once(':')
                 .and_then(|(h, _)| h.trim_matches(['[', ']']).parse().ok());

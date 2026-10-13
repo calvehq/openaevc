@@ -1,12 +1,10 @@
 //! `reference-kv` extension executable.
 #![forbid(unsafe_code)]
 
+use openaevc::extension::server::{self_artifact_digest, serve, Extension, HostContext};
+use openaevc::extension::wire::{ApplyOutput, HostCall, Operation, ValidateOutput, WireError};
+use openaevc::protocol::*;
 use openaevc_ext_reference_kv as kv;
-use openaevc_extension_contract::server::{self_artifact_digest, serve, Extension, HostContext};
-use openaevc_extension_contract::wire::{
-    ApplyOutput, HostCall, Operation, ValidateOutput, WireError,
-};
-use openaevc_protocol::*;
 use serde_json::{json, Value};
 
 struct Kv;

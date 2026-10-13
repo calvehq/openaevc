@@ -6,14 +6,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use openaevc_core::ImmutableObject;
-use openaevc_core::{Clock, FixedClock, IdGeneratorExt, UuidV7Ids};
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::*;
-use openaevc_runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::core::ImmutableObject;
+use openaevc::core::{Clock, FixedClock, IdGeneratorExt, UuidV7Ids};
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::*;
+use openaevc::runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::store::{MemoryStore, SqliteOptions, SqliteStore, Store};
+use openaevc::transport::client::{Endpoint, HttpClient};
 use openaevc_sdk::{EmbeddedClient, EventStream, OpenAevcClient, RemoteClient, Session};
-use openaevc_store::{MemoryStore, SqliteOptions, SqliteStore, Store};
-use openaevc_transport::client::{Endpoint, HttpClient};
 use serde_json::Value;
 
 /// Client over either target kind (the SDK traits are statically dispatched).
@@ -273,7 +273,7 @@ impl Target {
     pub fn now(&self) -> Timestamp {
         match self {
             Target::InProcess(t) => t.clock.now(),
-            Target::Remote(_) => openaevc_core::SystemClock.now(),
+            Target::Remote(_) => openaevc::core::SystemClock.now(),
         }
     }
 
@@ -289,7 +289,7 @@ impl Target {
                 let _ = tokio::task::spawn_blocking(move || rt.tick()).await;
             }
             Target::Remote(_) => {
-                let now = openaevc_core::SystemClock.now();
+                let now = openaevc::core::SystemClock.now();
                 let wait = now.millis_until(t).max(0) as u64 + 2_500;
                 tokio::time::sleep(Duration::from_millis(wait)).await;
             }

@@ -1,3 +1,3 @@
-module github.com/calvehq/OpenAEVC/sdk/go
+module github.com/calvehq/openaevc/sdk/go
 
 go 1.22

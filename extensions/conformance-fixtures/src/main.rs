@@ -11,9 +11,9 @@
 
 use std::io::Write;
 
-use openaevc_extension_contract::server::{self_artifact_digest, serve, Extension, HostContext};
-use openaevc_extension_contract::wire::{HostCall, Operation, VerifyOutput, WireError};
-use openaevc_protocol::*;
+use openaevc::extension::server::{self_artifact_digest, serve, Extension, HostContext};
+use openaevc::extension::wire::{HostCall, Operation, VerifyOutput, WireError};
+use openaevc::protocol::*;
 use serde_json::Value;
 
 struct Fixture {
@@ -153,14 +153,14 @@ impl Extension for Fixture {
                 // host's pipe to this process.
                 let mut out = std::io::stdout().lock();
                 for call in 1..=1000u64 {
-                    let msg = openaevc_extension_contract::wire::ExtensionMessage::HostCall {
+                    let msg = openaevc::extension::wire::ExtensionMessage::HostCall {
                         invocation: 1,
                         call,
                         request: HostCall::ConfigResolve {
                             key: format!("missing-key-with-a-long-name-{call:08}"),
                         },
                     };
-                    if openaevc_extension_contract::wire::write_frame(&mut out, &msg).is_err() {
+                    if openaevc::extension::wire::write_frame(&mut out, &msg).is_err() {
                         break;
                     }
                 }

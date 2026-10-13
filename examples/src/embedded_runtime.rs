@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use openaevc_protocol::{Digest, PackSpec, Query};
+use openaevc::protocol::{Digest, PackSpec, Query};
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 
 use crate::common::{new_namespace, open_embedded};

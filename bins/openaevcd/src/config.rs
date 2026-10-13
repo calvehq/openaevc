@@ -4,7 +4,7 @@
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-use openaevc_protocol::{PrincipalId, PublicKey};
+use openaevc::protocol::{PrincipalId, PublicKey};
 use serde::{Deserialize, Serialize};
 
 pub const CONFIG_VERSION: u32 = 1;
@@ -62,7 +62,7 @@ pub struct RuntimeSection {
 
 impl Default for RuntimeSection {
     fn default() -> Self {
-        let d = openaevc_runtime::RuntimeConfig::default();
+        let d = openaevc::runtime::RuntimeConfig::default();
         RuntimeSection {
             replay_window_ms: d.replay_window_ms,
             checkpoint_interval: d.checkpoint_interval,
@@ -104,7 +104,7 @@ pub struct Extensions {
 
 impl Default for Extensions {
     fn default() -> Self {
-        let d = openaevc_runtime::RuntimeConfig::default();
+        let d = openaevc::runtime::RuntimeConfig::default();
         Extensions {
             directories: vec![],
             deadline_ms: d.extension_deadline_ms,

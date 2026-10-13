@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use openaevc_core::ImmutableObject;
-use openaevc_protocol::{ObjectEnvelope, SUPPORTED_PROTOCOL};
-use openaevc_store::{SqliteOptions, SqliteStore, Store};
+use openaevc::core::ImmutableObject;
+use openaevc::protocol::{ObjectEnvelope, SUPPORTED_PROTOCOL};
+use openaevc::store::{SqliteOptions, SqliteStore, Store};
 use serde_json::Value;
 
 /// Generated copy of `schemas/json/openaevc.schema.json`, written by `generate-schemas` (checked by
@@ -73,7 +73,7 @@ fn object_from(bytes: &[u8]) -> Result<ImmutableObject, String> {
 fn run(cmd: Cmd) -> Result<(), String> {
     match cmd {
         Cmd::Decode { file } => {
-            let v = openaevc_canonical::decode(&read(&file)?)
+            let v = openaevc::canonical::decode(&read(&file)?)
                 .map_err(|e| format!("not canonical CBOR: {e}"))?;
             println!(
                 "{}",
@@ -82,22 +82,24 @@ fn run(cmd: Cmd) -> Result<(), String> {
         }
         Cmd::Canonicalize { file } => {
             let v = json_value(&read(&file)?)?;
-            let bytes = openaevc_canonical::encode(&v).map_err(|e| e.to_string())?;
+            let bytes = openaevc::canonical::encode(&v).map_err(|e| e.to_string())?;
             println!(
                 "{}",
-                openaevc_canonical::canonical_json(&v).map_err(|e| e.to_string())?
+                openaevc::canonical::canonical_json(&v).map_err(|e| e.to_string())?
             );
             println!("cbor {}", hex(&bytes));
-            println!("digest {}", openaevc_crypto::sha256(&bytes));
+            println!("digest {}", openaevc::crypto::sha256(&bytes));
         }
         Cmd::Digest { file } => {
             let bytes = read(&file)?;
-            let d = if openaevc_canonical::decode(&bytes).is_ok() {
-                openaevc_crypto::sha256(&bytes)
+            let d = if openaevc::canonical::decode(&bytes).is_ok() {
+                openaevc::crypto::sha256(&bytes)
             } else {
                 let v = json_value(&bytes)
                     .map_err(|_| "file is neither canonical CBOR nor JSON".to_string())?;
-                openaevc_crypto::sha256(&openaevc_canonical::encode(&v).map_err(|e| e.to_string())?)
+                openaevc::crypto::sha256(
+                    &openaevc::canonical::encode(&v).map_err(|e| e.to_string())?,
+                )
             };
             println!("{d}");
         }
@@ -153,7 +155,7 @@ fn run(cmd: Cmd) -> Result<(), String> {
             }
         }
         Cmd::Compatibility { endpoint } => {
-            use openaevc_transport::client::{Endpoint, HttpClient};
+            use openaevc::transport::client::{Endpoint, HttpClient};
             let ep = match endpoint.strip_prefix("unix:") {
                 #[cfg(unix)]
                 Some(path) => Endpoint::Unix(path.into()),

@@ -11,16 +11,16 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use openaevc_core::request::sign_request;
-use openaevc_core::{Clock, IdGenerator, IdGeneratorExt, ImmutableObject, SystemClock, UuidV7Ids};
-use openaevc_crypto::Signer;
-use openaevc_protocol::*;
-use openaevc_runtime::{Runtime, Subscription};
-use openaevc_transport::client::{Endpoint, HttpClient};
+use openaevc::core::request::sign_request;
+use openaevc::core::{Clock, IdGenerator, IdGeneratorExt, ImmutableObject, SystemClock, UuidV7Ids};
+use openaevc::crypto::Signer;
+use openaevc::protocol::*;
+use openaevc::runtime::{Runtime, Subscription};
+use openaevc::transport::client::{Endpoint, HttpClient};
 use serde::Serialize;
 use serde_json::Value;
 
-pub use openaevc_transport::client::Endpoint as RemoteEndpoint;
+pub use openaevc::transport::client::Endpoint as RemoteEndpoint;
 
 pub type Result<T> = std::result::Result<T, ProtocolError>;
 
@@ -110,7 +110,7 @@ impl Session {
 
     /// Signs a capability grant issued by this session's principal.
     pub fn sign_grant(&self, body: GrantBody) -> Result<SignedGrant> {
-        openaevc_authority::sign_grant(body, self.signer.as_ref())
+        openaevc::authority::sign_grant(body, self.signer.as_ref())
     }
 }
 
@@ -132,7 +132,7 @@ enum StreamInner {
         notify: tokio::sync::watch::Receiver<u64>,
         buffer: VecDeque<Event>,
     },
-    Remote(openaevc_transport::client::EventStream),
+    Remote(openaevc::transport::client::EventStream),
 }
 
 impl EventStream {

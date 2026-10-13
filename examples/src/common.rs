@@ -4,12 +4,12 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use openaevc_core::{IdGeneratorExt, SystemClock, UuidV7Ids};
-use openaevc_crypto::{Signer, SigningKey};
-use openaevc_protocol::*;
-use openaevc_runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::core::{IdGeneratorExt, SystemClock, UuidV7Ids};
+use openaevc::crypto::{Signer, SigningKey};
+use openaevc::protocol::*;
+use openaevc::runtime::{Admin, Runtime, RuntimeConfig, RuntimeDeps};
+use openaevc::store::{SqliteOptions, SqliteStore};
 use openaevc_sdk::{EmbeddedClient, OpenAevcClient, Session, TypedClient};
-use openaevc_store::{SqliteOptions, SqliteStore};
 
 use crate::Result;
 
@@ -101,7 +101,7 @@ pub async fn register_extension<C: OpenAevcClient>(
     dir: &Path,
     name: &str,
 ) -> Result<Digest> {
-    let digest = openaevc_crypto::sha256(&std::fs::read(dir.join(name))?);
+    let digest = openaevc::crypto::sha256(&std::fs::read(dir.join(name))?);
     Ok(
         c.register_extension(name, digest, vec![HostCapability::ResourceRead])
             .await?,

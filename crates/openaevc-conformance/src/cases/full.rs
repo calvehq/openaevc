@@ -3,9 +3,9 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use openaevc_protocol::*;
+use openaevc::protocol::*;
+use openaevc::store::{SqliteOptions, SqliteStore};
 use openaevc_sdk::{OpenAevcClient, TypedClient};
-use openaevc_store::{SqliteOptions, SqliteStore};
 use serde_json::json;
 
 use crate::ctx::{ensure, expect_code, Check, Ctx, Ns};
@@ -33,7 +33,7 @@ async fn observable(cx: &Ctx, ns: &Ns) -> Result<Digest, String> {
         events.iter().any(|e| e.kind == "changepack.promoted"),
         "promotion without its audit event",
     )?;
-    openaevc_core::events::verify_chain(&events, 0, Digest::ZERO)
+    openaevc::core::events::verify_chain(&events, 0, Digest::ZERO)
         .map_err(|e| format!("journal: {}", e.message))?;
     Ok(promoted)
 }
@@ -104,7 +104,7 @@ async fn remote_recovery(cx: &Ctx, l: Arc<dyn Lifecycle>) -> CaseResult {
         after.len() >= before.len() && after[..before.len()] == before[..],
         "restart must preserve the journal",
     )?;
-    openaevc_core::events::verify_chain(&after, 0, Digest::ZERO)
+    openaevc::core::events::verify_chain(&after, 0, Digest::ZERO)
         .map_err(|e| format!("journal after restart: {}", e.message))?;
     // 7. Promoted objects and Baselines remain valid.
     let v = ns
@@ -477,7 +477,7 @@ pub async fn inert_imports(cx: &Ctx) -> CaseResult {
     let m = cx.member(&b).await?;
     cx.grant(&b, m.id, &["grant.issue"]).await?;
     let body = cx.grant_body(b.id, b.root_id, m.id, &["*"], None, 1);
-    let signed = openaevc_authority::sign_grant(body, b.root_key.as_ref()).c()?;
+    let signed = openaevc::authority::sign_grant(body, b.root_key.as_ref()).c()?;
     let env = ObjectEnvelope {
         kind: ObjectKind::CapabilityGrant,
         protocol_version: PROTOCOL_VERSION,
@@ -488,7 +488,7 @@ pub async fn inert_imports(cx: &Ctx) -> CaseResult {
         body: serde_json::to_value(&signed).map_err(|e| e.to_string())?,
         signatures: vec![],
     };
-    let obj = openaevc_core::ImmutableObject::build(env).c()?;
+    let obj = openaevc::core::ImmutableObject::build(env).c()?;
     b.root
         .command(Command::PutImmutableObject {
             digest: obj.digest(),

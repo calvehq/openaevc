@@ -3,12 +3,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use openaevc_core::FixedClock;
-use openaevc_protocol::*;
+use openaevc::core::FixedClock;
+use openaevc::protocol::*;
+use openaevc::transport::client::Endpoint;
+use openaevc::transport::server::{self, Health, Listener, ServerConfig};
 use openaevc_sdk::{EmbeddedClient, OpenAevcClient, RemoteClient, Session, TypedClient};
 use openaevc_testkit::{admin_identity, Harness, Identity};
-use openaevc_transport::client::Endpoint;
-use openaevc_transport::server::{self, Health, Listener, ServerConfig};
 
 #[derive(Debug, PartialEq)]
 struct Outcome {

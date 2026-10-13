@@ -6,11 +6,11 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use clap::{Parser, ValueEnum};
+use openaevc::crypto::SigningKey;
+use openaevc::protocol::PrincipalId;
+use openaevc::transport::client::Endpoint;
 use openaevc_conformance::lifecycle::ReferenceDaemon;
 use openaevc_conformance::{extension_target, Profile, Report, Target};
-use openaevc_crypto::SigningKey;
-use openaevc_protocol::PrincipalId;
-use openaevc_transport::client::Endpoint;
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum TargetKind {

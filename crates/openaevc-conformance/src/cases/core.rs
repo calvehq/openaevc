@@ -1,7 +1,7 @@
 //! CORE profile: canonical encoding, identity, digests, signatures, errors, versions — all
 //! observed through the public API.
 
-use openaevc_protocol::*;
+use openaevc::protocol::*;
 use openaevc_sdk::{OpenAevcClient, TypedClient};
 use serde_json::{json, Value};
 
@@ -38,7 +38,7 @@ pub async fn objects_round_trip(cx: &Ctx) -> CaseResult {
             .ok_or("digest")?
             .parse()
             .map_err(|_| "digest")?;
-        ensure(openaevc_crypto::sha256(&bytes) == digest, "fixture digest")?;
+        ensure(openaevc::crypto::sha256(&bytes) == digest, "fixture digest")?;
         import(cx, &ns, digest, bytes.clone()).await.c()?;
         let back = ns.root.get_object(digest).await.c()?;
         ensure(
@@ -64,7 +64,7 @@ pub async fn objects_invalid_rejected(cx: &Ctx) -> CaseResult {
         let bytes = unhex(c["cbor_hex"].as_str().ok_or("hex")?);
         let digest = match c.get("digest").and_then(Value::as_str) {
             Some(d) => d.parse().map_err(|_| "digest")?,
-            None => openaevc_crypto::sha256(&bytes),
+            None => openaevc::crypto::sha256(&bytes),
         };
         let want: ErrorCode =
             serde_json::from_value(c["error"].clone()).map_err(|e| e.to_string())?;
@@ -78,7 +78,7 @@ pub async fn objects_invalid_rejected(cx: &Ctx) -> CaseResult {
     {
         let bytes = unhex(c["cbor_hex"].as_str().ok_or("hex")?);
         expect_code(
-            import(cx, &ns, openaevc_crypto::sha256(&bytes), bytes).await,
+            import(cx, &ns, openaevc::crypto::sha256(&bytes), bytes).await,
             ErrorCode::CanonicalEncodingError,
         )
         .map_err(|e| format!("invalid CBOR {}: {e}", c["name"]))?;
@@ -103,9 +103,9 @@ pub async fn signature_identity(cx: &Ctx) -> CaseResult {
         .remove("signatures")
         .and_then(|s| s.as_array().cloned())
         .ok_or("signatures")?;
-    let enc = |v: &Value| openaevc_canonical::encode(v).map_err(|e| e.to_string());
+    let enc = |v: &Value| openaevc::canonical::encode(v).map_err(|e| e.to_string());
     ensure(
-        openaevc_crypto::sha256(&enc(&unsigned)?).to_string() == two["signing_digest"],
+        openaevc::crypto::sha256(&enc(&unsigned)?).to_string() == two["signing_digest"],
         "signing digest is SHA-256 of the envelope without signatures",
     )?;
     // Every subset of a valid signature set is a valid, distinct object.
@@ -114,7 +114,7 @@ pub async fn signature_identity(cx: &Ctx) -> CaseResult {
     let mut seen = std::collections::BTreeSet::new();
     for v in [unsigned.clone(), one, two["json"].clone()] {
         let bytes = enc(&v)?;
-        let digest = openaevc_crypto::sha256(&bytes);
+        let digest = openaevc::crypto::sha256(&bytes);
         import(cx, &ns, digest, bytes.clone()).await.c()?;
         let back = ns.root.get_object(digest).await.c()?;
         ensure(back.bytes() == bytes.as_slice(), "object bytes changed")?;
@@ -128,7 +128,7 @@ pub async fn signature_identity(cx: &Ctx) -> CaseResult {
     reversed["signatures"] = json!(sigs.iter().rev().collect::<Vec<_>>());
     let bytes = enc(&reversed)?;
     expect_code(
-        import(cx, &ns, openaevc_crypto::sha256(&bytes), bytes).await,
+        import(cx, &ns, openaevc::crypto::sha256(&bytes), bytes).await,
         ErrorCode::CanonicalEncodingError,
     )
     .map(drop)
@@ -241,11 +241,11 @@ pub async fn signatures(cx: &Ctx) -> CaseResult {
         .as_object_mut()
         .ok_or("object")?
         .remove("signature");
-    use openaevc_crypto::Signer;
-    let msg = openaevc_canonical::encode(&unsigned).map_err(|e| e.to_string())?;
+    use openaevc::crypto::Signer;
+    let msg = openaevc::canonical::encode(&unsigned).map_err(|e| e.to_string())?;
     v["signature"] = json!(ns
         .root_key
-        .sign(openaevc_crypto::Domain::Grant, &msg)
+        .sign(openaevc::crypto::Domain::Grant, &msg)
         .to_string());
     expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized)?;
     // Malformed signature.
@@ -258,7 +258,7 @@ pub async fn signatures(cx: &Ctx) -> CaseResult {
     )?;
     // Non-canonical S (S + L) of an otherwise valid signature: strict verification refuses it.
     let v = cx.signed_value(&ns.root_key, ns.root_id, Some(ns.id), body.clone(), |_| {});
-    let sig: openaevc_protocol::Signature = v["signature"]
+    let sig: openaevc::protocol::Signature = v["signature"]
         .as_str()
         .ok_or("signature")?
         .parse()
@@ -275,7 +275,7 @@ pub async fn signatures(cx: &Ctx) -> CaseResult {
         carry = x >> 8;
     }
     let mut v = v;
-    v["signature"] = json!(openaevc_protocol::b64::encode(&high));
+    v["signature"] = json!(openaevc::protocol::b64::encode(&high));
     expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized)?;
     // A principal registered with a small-order key must never authenticate with the
     // universal forgery (R = identity, S = 0).
@@ -294,11 +294,11 @@ pub async fn signatures(cx: &Ctx) -> CaseResult {
         let mut forged = [0u8; 64];
         forged[0] = 1;
         let mut v = cx.signed_value(&ns.root_key, weak, Some(ns.id), body.clone(), |_| {});
-        v["signature"] = json!(openaevc_protocol::b64::encode(&forged));
+        v["signature"] = json!(openaevc::protocol::b64::encode(&forged));
         expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized)?;
     }
     // Another key.
-    let other = openaevc_crypto::SigningKey::generate();
+    let other = openaevc::crypto::SigningKey::generate();
     let v = cx.signed_value(&other, ns.root_id, Some(ns.id), body, |_| {});
     expect_code(cx.target.query_value(v).await, ErrorCode::Unauthorized).map(drop)
 }
@@ -320,7 +320,7 @@ pub async fn errors(cx: &Ctx) -> CaseResult {
     )?;
     // A failed command leaves no state behind.
     let before = cx.events(&ns.root).await?.len();
-    let bogus = openaevc_crypto::sha256(b"conformance-missing");
+    let bogus = openaevc::crypto::sha256(b"conformance-missing");
     expect_code(
         ns.root.create_baseline(vec![bogus], vec![]).await,
         ErrorCode::NotFound,

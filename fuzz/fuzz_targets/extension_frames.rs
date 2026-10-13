@@ -2,7 +2,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use openaevc_extension_contract::wire::{read_frame, ExtensionMessage};
+use openaevc::extension::wire::{read_frame, ExtensionMessage};
 
 fuzz_target!(|data: &[u8]| {
     let mut r = data;

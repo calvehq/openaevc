@@ -6,12 +6,12 @@ use std::sync::Arc;
 use axum::body::Body;
 use axum::http::{header, StatusCode};
 use axum::response::Response;
+use openaevc::core::Clock;
+use openaevc::store::MemoryStore;
+use openaevc::transport::client::Endpoint;
+use openaevc::transport::server::{self, Health, Listener, ServerConfig};
 use openaevc_conformance::target::Identity;
 use openaevc_conformance::{run, Profile, Report, Status, Target};
-use openaevc_core::Clock;
-use openaevc_store::MemoryStore;
-use openaevc_transport::client::Endpoint;
-use openaevc_transport::server::{self, Health, Listener, ServerConfig};
 
 /// Lies about authorization (denials become empty successes) and flips a byte of every raw object.
 async fn corrupt(resp: Response) -> Response {
@@ -101,7 +101,7 @@ async fn remote(mutation: Option<Mutation>, ext: Option<std::path::PathBuf>) -> 
     let clock = id.clock.clone();
     tokio::spawn(async move {
         loop {
-            clock.set(openaevc_core::SystemClock.now().unix_nanos() as i64);
+            clock.set(openaevc::core::SystemClock.now().unix_nanos() as i64);
             tokio::time::sleep(std::time::Duration::from_millis(5)).await;
         }
     });

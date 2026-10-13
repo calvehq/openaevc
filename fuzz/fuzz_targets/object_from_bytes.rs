@@ -3,7 +3,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use openaevc_core::ImmutableObject;
+use openaevc::core::ImmutableObject;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(o) = ImmutableObject::from_bytes(data, None) {
