@@ -148,16 +148,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
+      # Every publish step skips a version its registry already has, so a failed publish is
+      # retried with "Re-run failed jobs".
       # `openaevc` is the only crate published to crates.io; every other package is publish = false.
-      - run: cargo publish -p openaevc --locked
+      - name: Publish openaevc to crates.io
+        run: |
+          v=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="openaevc") | .version')
+          if curl -sf -A "openaevc-release (github.com/calvehq/openaevc)" "https://crates.io/api/v1/crates/openaevc/$v" >/dev/null; then
+            echo "openaevc $v already on crates.io; skipping"
+          else
+            cargo publish -p openaevc --locked
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      # npm trusted publishing (OIDC, provenance included): no token secret. Needs npm >= 11.5.1.
       - uses: actions/setup-node@v4
-        with: { node-version: "22", registry-url: "https://registry.npmjs.org" }
-      - working-directory: sdk/typescript
-        run: npm ci && npm run build && npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        with: { node-version: "22" }
+      - name: Publish @openaevc/sdk to npm
+        working-directory: sdk/typescript
+        run: |
+          npm install -g npm@^11.5.1
+          npm ci && npm run build
+          pkg="$(node -p 'require("./package.json").name')@$(node -p 'require("./package.json").version')"
+          if npm view "$pkg" version >/dev/null 2>&1; then
+            echo "$pkg already on npm; skipping"
+          else
+            npm publish --provenance --access public
+          fi
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - working-directory: sdk/python
@@ -166,3 +183,4 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: sdk/python/dist
+          skip-existing: true
