@@ -16,6 +16,8 @@ openaevc = { version = "0.1", features = ["full"] }     # + store, runtime, tran
 | `transport` | `openaevc::transport` (implies `runtime`) | axum, hyper, rustls |
 | `full` | everything above |  |
 
+For a client API over the embedded runtime or the `openaevcd` daemon, use the Rust SDK (`openaevc-sdk`, not yet on crates.io; see [Getting started](https://github.com/calvehq/openaevc/blob/master/docs/getting-started/README.md#rust)).
+
 Features only add modules; they never change protocol behaviour. The normative specification, schemas and conformance suite live in the [repository](https://github.com/calvehq/openaevc).
 
 License: Apache-2.0.
