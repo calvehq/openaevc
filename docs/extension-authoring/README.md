@@ -2,6 +2,22 @@
 
 An extension adds a domain — resource kinds, effect kinds, verifiers, evaluators, composition validators — without changing the runtime. It is an executable that speaks the Extension Contract (`spec/extensions.md`) over stdin/stdout. Complete examples: `examples/custom-extension-rust/main.rs` (Rust, ~100 lines) and `examples/custom-extension-python/extension.py` (Python).
 
+## 0. Add the dependency
+
+An extension needs only the default build of the `openaevc` crate (no runtime, storage or HTTP stack):
+
+```sh
+cargo add openaevc serde serde_json
+```
+
+```rust
+use openaevc::extension::server::{self_artifact_digest, serve, Extension, HostContext};
+use openaevc::extension::wire::{ApplyOutput, Operation, ValidateOutput, VerifyOutput, WireError};
+use openaevc::protocol::*;
+```
+
+Extensions in other languages implement the same contract; Python has a helper in `sdk/python` (`openaevc.extension`).
+
 ## 1. Declare a manifest
 
 ```rust

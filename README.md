@@ -20,6 +20,18 @@
 
 **It is not** a version-control system, a CI server, an agent framework or a workflow product. It knows nothing about files or source code: domains (key-value stores, documents, infrastructure, …) are added by out-of-process extensions.
 
+## Install
+
+| What | How |
+| --- | --- |
+| Daemon and tools (`openaevcd`, `openaevc-inspect`, `openaevc-conformance`) | signed binaries on [GitHub Releases](https://github.com/calvehq/openaevc/releases) |
+| Python SDK | `pip install openaevc` |
+| TypeScript SDK | `npm i @openaevc/sdk` |
+| Go SDK | `go get github.com/calvehq/openaevc/sdk/go@v0.1.0` |
+| Rust crate (protocol, runtime, transport, extension contract) | `cargo add openaevc` ([features](crates/openaevc/README.md)) |
+
+**[Getting started](docs/getting-started/README.md)**: run the daemon and take a first change to an immutable Baseline in Python, TypeScript, Go or Rust.
+
 ## Architecture
 
 ```text
