@@ -46,7 +46,7 @@ openaevc-conformance = { path = "crates/openaevc-conformance" }
 openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
 schemars = "1"
-base64 = "0.22"
+base64 = "0.23"
 sha2 = "0.10"
 ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
