@@ -48,7 +48,7 @@ proptest = "1"
 schemars = "1"
 base64 = "0.22"
 sha2 = "0.10"
-ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
+ed25519-dalek = { version = "3", features = ["rand_core", "zeroize"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 tempfile = "3"
