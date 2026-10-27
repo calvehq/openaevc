@@ -43,7 +43,7 @@ jobs:
       - run: cargo test --release --locked -p openaevcd --test scenario_k -- --nocapture
         env:
           OPENAEVC_CONFORMANCE_REPORT_DIR: conformance
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: release-conformance
@@ -85,7 +85,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.target }}
           path: dist/*
@@ -102,7 +102,7 @@ jobs:
           format: spdx-json
           output-file: openaevc.spdx.json
           upload-artifact: false
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: openaevc.spdx.json
@@ -132,7 +132,7 @@ jobs:
           for f in *; do
             cosign sign-blob --yes --output-signature "$f.sig" --output-certificate "$f.pem" "$f"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release
           path: dist/*
