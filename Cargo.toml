@@ -47,7 +47,7 @@ openaevc-testkit = { path = "crates/openaevc-testkit" }
 proptest = "1"
 schemars = "1"
 base64 = "0.22"
-sha2 = "0.10"
+sha2 = "0.11"
 ed25519-dalek = { version = "2", features = ["rand_core", "zeroize"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
