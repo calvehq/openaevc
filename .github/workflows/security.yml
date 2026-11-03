@@ -12,7 +12,7 @@ jobs:
   deny:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Advisories (RustSec), licenses (allowlist in deny.toml), bans and sources.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
@@ -22,7 +22,7 @@ jobs:
     # Crash injection between every commit stage (SQLite + CAS failpoints).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup show
       - run: cargo test --locked -p openaevc --features fault-injection --test storage
       - run: cargo test --locked -p openaevc-testkit --test promotion --test recovery
