@@ -12,7 +12,7 @@ jobs:
       matrix:
         target: [canonical_decode, protocol_envelopes, object_from_bytes, policy_documents, extension_frames]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install nightly --profile minimal
       - run: cargo +nightly install cargo-fuzz --locked
       - working-directory: fuzz
