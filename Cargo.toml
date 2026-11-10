@@ -65,7 +65,7 @@ rcgen = "0.13"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 clap = { version = "4", features = ["derive", "env"] }
-toml = "0.8"
+toml = "1.2"
 
 # Hashing and signatures dominate test time in unoptimized builds (extensions hash their own
 # executables on every handshake).
